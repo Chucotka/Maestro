@@ -119,13 +119,13 @@ const Fretboard: React.FC = () => {
 
       <div className="flex flex-col items-start">
         <div className="flex w-full" style={{ paddingLeft: STRING_LABEL_WIDTH_PX }}>
-          {Array.from({ length: NUM_FRETS + 1 }).map((_, i) => (
+          {Array.from({ length: NUM_FRETS }).map((_, i) => (
             <div
-              key={`fret-num-${i}`}
+              key={`fret-num-${i + 1}`}
               className="flex-shrink-0 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400"
               style={{ width: `${FRET_WIDTH_PX}px`, height: `${FRET_NUMBER_HEIGHT_PX}px` }}
             >
-              {i > 0 && i}
+              {i + 1}
             </div>
           ))}
         </div>
@@ -195,26 +195,13 @@ const Fretboard: React.FC = () => {
             {/* 3. Note Markers */}
             {fretboardNotes.map((note, index) => {
               const shouldRender = showAllNotes || note.isScaleNote;
-              if (!shouldRender) return null;
-
-              const isFrettedNote = note.fretNumber > 0;
-              const leftPos = isFrettedNote
-                ? note.fretNumber * FRET_WIDTH_PX - FRET_WIDTH_PX / 2
-                : -20; // Position open string notes to the left of the nut
-
-              const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
-
-              let markerContent: string | number = '';
-              if (isFrettedNote) {
-                markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
-              } else {
-                // Only show open string markers if they are part of the scale
-                if (note.isScaleNote) {
-                  markerContent = showNoteNames ? note.noteName : '●';
-                } else {
-                  return null; // Don't show non-scale open notes
-                }
+              if (!shouldRender || note.fretNumber === 0) {
+                return null;
               }
+
+              const leftPos = note.fretNumber * FRET_WIDTH_PX - FRET_WIDTH_PX / 2;
+              const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
+              const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
 
               return (
                 <div
