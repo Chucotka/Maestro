@@ -25,12 +25,14 @@ const Fretboard: React.FC = () => {
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
   const synth = useRef<Tone.PluckSynth | null>(null);
-  const audioStarted = useRef(false);
 
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
+    // Initialize the synth on component mount
     synth.current = new Tone.PluckSynth().toDestination();
+    
+    // Clean up the synth on component unmount
     return () => {
       synth.current?.dispose();
     };
@@ -98,10 +100,12 @@ const Fretboard: React.FC = () => {
   }, [currentTuning, scaleNotes, selectedRoot]);
 
   const handleNoteClick = async (noteWithOctave: string) => {
-    if (!audioStarted.current) {
+    // Browsers require a user gesture to start the audio context.
+    // We check the context state and start it if it's not running.
+    if (Tone.context.state !== 'running') {
       await Tone.start();
-      audioStarted.current = true;
     }
+    // Trigger the synth to play the note.
     synth.current?.triggerAttackRelease(noteWithOctave, "8n");
   };
 
