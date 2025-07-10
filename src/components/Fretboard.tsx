@@ -17,6 +17,7 @@ const FRET_DOT_FRETS_DOUBLE = [12, 24];
 const Fretboard: React.FC = () => {
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
+  const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretWidth, setFretWidth] = useState(50);
@@ -24,7 +25,7 @@ const Fretboard: React.FC = () => {
 
   const { theme, setTheme } = useTheme();
 
-  const currentTuning = GUITAR_TUNINGS.STANDARD;
+  const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
 
   useLayoutEffect(() => {
     const container = fretboardContainerRef.current;
@@ -91,11 +92,11 @@ const Fretboard: React.FC = () => {
     <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
       <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">Fret Maestro</h2>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center">
+      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-8 justify-center items-center">
         <div className="flex items-center gap-2">
           <Label htmlFor="root-select" className="text-gray-700 dark:text-gray-300">Root Note:</Label>
           <Select value={selectedRoot} onValueChange={setSelectedRoot}>
-            <SelectTrigger id="root-select" className="w-[120px] md:w-[150px]">
+            <SelectTrigger id="root-select" className="w-[120px]">
               <SelectValue placeholder="Select Root" />
             </SelectTrigger>
             <SelectContent>
@@ -112,12 +113,29 @@ const Fretboard: React.FC = () => {
             value={selectedScaleName}
             onValueChange={(value) => setSelectedScaleName(value as keyof typeof SCALES)}
           >
-            <SelectTrigger id="scale-select" className="w-[180px] md:w-[200px]">
+            <SelectTrigger id="scale-select" className="w-[180px]">
               <SelectValue placeholder="Select Scale/Mode" />
             </SelectTrigger>
             <SelectContent>
               {Object.keys(SCALES).map((scale) => (
                 <SelectItem key={scale} value={scale}>{scale}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label htmlFor="tuning-select" className="text-gray-700 dark:text-gray-300">Tuning:</Label>
+          <Select
+            value={selectedTuningName}
+            onValueChange={(value) => setSelectedTuningName(value)}
+          >
+            <SelectTrigger id="tuning-select" className="w-[180px]">
+              <SelectValue placeholder="Select Tuning" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.keys(GUITAR_TUNINGS).map((tuning) => (
+                <SelectItem key={tuning} value={tuning}>{tuning}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -3,7 +3,15 @@ export const ALL_NOTES = [
 ];
 
 export const GUITAR_TUNINGS = {
-  STANDARD: ["E", "A", "D", "G", "B", "E"], // Low E to High E
+  "Standard":       ["E", "A", "D", "G", "B", "E"],
+  "Drop D":         ["D", "A", "D", "G", "B", "E"],
+  "Drop C#":        ["C#", "G#", "C#", "F#", "A#", "D#"],
+  "Drop C":         ["C", "G", "C", "F", "A", "D"],
+  "Open G":         ["D", "G", "D", "G", "B", "D"],
+  "Open D":         ["D", "A", "D", "F#", "A", "D"],
+  "Open C":         ["C", "G", "C", "G", "C", "E"],
+  "Open E":         ["E", "B", "E", "G#", "B", "E"],
+  "DADGAD":         ["D", "A", "D", "G", "A", "D"],
 };
 
 export const SCALES = {
