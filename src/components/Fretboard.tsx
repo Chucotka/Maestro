@@ -75,7 +75,10 @@ const Fretboard: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <Label htmlFor="scale-select" className="text-gray-700 dark:text-gray-300">Scale/Mode:</Label>
-          <Select value={selectedScaleName} onValueChange={setSelectedScaleName}>
+          <Select
+            value={selectedScaleName}
+            onValueChange={(value) => setSelectedScaleName(value as keyof typeof SCALES)}
+          >
             <SelectTrigger id="scale-select" className="w-[180px] md:w-[200px]">
               <SelectValue placeholder="Select Scale/Mode" />
             </SelectTrigger>
