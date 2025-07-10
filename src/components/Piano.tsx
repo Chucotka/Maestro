@@ -93,7 +93,7 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth })
                   )}
                 >
                   <span className={cn('font-bold select-none text-black', isHighlighted && { 'text-red-600 dark:text-red-400': isRoot, 'text-sky-600 dark:text-sky-400': !isRoot })}>
-                    {showNoteNames ? key.note : (key.note === 'C' ? `${key.note}${key.octave}` : '')}
+                    {showNoteNames ? key.note : ''}
                   </span>
                 </button>
               );
