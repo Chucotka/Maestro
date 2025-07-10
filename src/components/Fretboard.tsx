@@ -3,8 +3,9 @@ import { getNoteAtFret, getScaleNotes, ALL_NOTES, GUITAR_TUNINGS, SCALES } from 
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch"; // Import Switch component
+import { Switch } from "@/components/ui/switch";
 import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes'; // Import useTheme
 
 const NUM_FRETS = 24; // 24 frets as per requirement
 const STRING_HEIGHT_PX = 30; // Visual spacing for strings
@@ -18,8 +19,10 @@ const FRET_DOT_FRETS_DOUBLE = [12, 24];
 const Fretboard: React.FC = () => {
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
-  const [showAllNotes, setShowAllNotes] = useState<boolean>(false); // New state for showing all notes
-  const [showNoteNames, setShowNoteNames] = useState<boolean>(false); // New state for showing note names
+  const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
+  const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
+
+  const { theme, setTheme } = useTheme(); // Use the useTheme hook
 
   const currentTuning = GUITAR_TUNINGS.STANDARD; // Using standard tuning for now
 
@@ -100,7 +103,7 @@ const Fretboard: React.FC = () => {
         </div>
       </div>
 
-      {/* New Toggles */}
+      {/* Toggles for display options */}
       <div className="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center">
         <div className="flex items-center space-x-2">
           <Switch
@@ -117,6 +120,15 @@ const Fretboard: React.FC = () => {
             onCheckedChange={setShowNoteNames}
           />
           <Label htmlFor="show-note-names" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
+        </div>
+        {/* Dark Mode Toggle */}
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="dark-mode"
+            checked={theme === 'dark'}
+            onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+          />
+          <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">Dark Mode</Label>
         </div>
       </div>
 
@@ -219,7 +231,7 @@ const Fretboard: React.FC = () => {
               if (shouldRender) {
                 const markerContent = showNoteNames
                   ? note.noteName
-                  : (note.isScaleNote ? note.sequenceNumber! : note.noteName); // Show note name for non-scale notes if not showing sequence
+                  : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
 
                 const leftPos = note.fretNumber * FRET_WIDTH_PX + FRET_WIDTH_PX / 2;
                 const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
