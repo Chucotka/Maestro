@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 
 const NUM_FRETS = 24;
-const STRING_HEIGHT_PX = 45; // Increased for more space
-const FRET_WIDTH_PX = 100;   // Increased for more space
+const STRING_HEIGHT_PX = 45;
+const FRET_WIDTH_PX = 100;
 const FRET_NUMBER_HEIGHT_PX = 30;
 const STRING_LABEL_WIDTH_PX = 40;
 
@@ -144,35 +144,26 @@ const Fretboard: React.FC = () => {
           </div>
 
           <div
-            className="relative border-l-2 border-gray-500 dark:border-gray-400 flex-grow bg-gray-200 dark:bg-gray-800 rounded-r-md"
+            className="relative border-l-4 border-stone-600 dark:border-stone-400 flex-grow bg-stone-200 dark:bg-stone-800 rounded-r-md"
             style={{
               minWidth: `${NUM_FRETS * FRET_WIDTH_PX}px`,
               height: `${currentTuning.length * STRING_HEIGHT_PX}px`,
             }}
           >
-            {Array.from({ length: NUM_FRETS + 1 }).map((_, i) => (
+            {/* 1. Fret Lines */}
+            {Array.from({ length: NUM_FRETS }).map((_, i) => (
               <div
-                key={`fret-line-${i}`}
-                className={cn(
-                  "absolute top-0 h-full bg-gray-400 dark:bg-gray-600",
-                  i === 0 ? 'w-2' : 'w-0.5'
-                )}
-                style={{ left: `${i * FRET_WIDTH_PX}px` }}
+                key={`fret-line-${i + 1}`}
+                className="absolute top-0 h-full w-0.5 bg-stone-400 dark:bg-stone-600"
+                style={{ left: `${(i + 1) * FRET_WIDTH_PX}px` }}
               />
             ))}
 
-            {currentTuning.map((_, i) => (
-              <div
-                key={`string-line-${i}`}
-                className="absolute left-0 w-full bg-gray-500 dark:bg-gray-400 h-0.5"
-                style={{ top: `${i * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2}px` }}
-              />
-            ))}
-
+            {/* 2. Fret Dots */}
             {FRET_DOT_FRETS_SINGLE.map((fret) => (
               <div
                 key={`dot-single-${fret}`}
-                className="absolute rounded-full bg-gray-400 dark:bg-gray-500 w-3 h-3 md:w-4 md:h-4"
+                className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-3 h-3 md:w-4 md:h-4"
                 style={{
                   left: `${fret * FRET_WIDTH_PX - FRET_WIDTH_PX / 2}px`,
                   top: `50%`,
@@ -180,11 +171,10 @@ const Fretboard: React.FC = () => {
                 }}
               />
             ))}
-
             {FRET_DOT_FRETS_DOUBLE.map((fret) => (
               <React.Fragment key={`dot-double-${fret}`}>
                 <div
-                  className="absolute rounded-full bg-gray-400 dark:bg-gray-500 w-3 h-3 md:w-4 md:h-4"
+                  className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-3 h-3 md:w-4 md:h-4"
                   style={{
                     left: `${fret * FRET_WIDTH_PX - FRET_WIDTH_PX / 2}px`,
                     top: `calc(50% - ${STRING_HEIGHT_PX * 1.5}px)`,
@@ -192,7 +182,7 @@ const Fretboard: React.FC = () => {
                   }}
                 />
                 <div
-                  className="absolute rounded-full bg-gray-400 dark:bg-gray-500 w-3 h-3 md:w-4 md:h-4"
+                  className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-3 h-3 md:w-4 md:h-4"
                   style={{
                     left: `${fret * FRET_WIDTH_PX - FRET_WIDTH_PX / 2}px`,
                     top: `calc(50% + ${STRING_HEIGHT_PX * 1.5}px)`,
@@ -202,14 +192,15 @@ const Fretboard: React.FC = () => {
               </React.Fragment>
             ))}
 
+            {/* 3. Note Markers */}
             {fretboardNotes.map((note, index) => {
               const shouldRender = showAllNotes || note.isScaleNote;
-              if (shouldRender) {
+              if (shouldRender && note.fretNumber > 0) {
                 const markerContent = showNoteNames
                   ? note.noteName
                   : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
 
-                const leftPos = note.fretNumber * FRET_WIDTH_PX + FRET_WIDTH_PX / 2;
+                const leftPos = note.fretNumber * FRET_WIDTH_PX - FRET_WIDTH_PX / 2;
                 const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
 
                 return (
@@ -229,6 +220,15 @@ const Fretboard: React.FC = () => {
               }
               return null;
             })}
+
+            {/* 4. String Lines (Rendered last to be on top) */}
+            {currentTuning.map((_, i) => (
+              <div
+                key={`string-line-${i}`}
+                className="absolute left-0 w-full h-[1.5px] bg-gradient-to-r from-stone-600 to-stone-400 dark:from-stone-400 dark:to-stone-300"
+                style={{ top: `${i * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2}px`, transform: 'translateY(-50%)' }}
+              />
+            ))}
           </div>
         </div>
       </div>

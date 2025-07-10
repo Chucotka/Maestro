@@ -2,9 +2,9 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface NoteMarkerProps {
-  content: string | number; // Can be note name or sequence number
+  content: string | number;
   isRoot: boolean;
-  isHighlighted: boolean; // True for scale notes, false for non-scale notes (if showing all)
+  isHighlighted: boolean;
   onClick?: () => void;
 }
 
@@ -17,17 +17,18 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
   return (
     <div
       className={cn(
-        "absolute flex items-center justify-center rounded-full font-bold cursor-pointer transition-all duration-100 ease-in-out",
-        "w-5 h-5 text-[10px] md:w-6 md:h-6 md:text-xs", // Smaller, more responsive sizing
+        "flex items-center justify-center rounded-full font-semibold cursor-pointer transition-all duration-150 ease-in-out border-2",
+        "w-7 h-7 text-sm",
+        "bg-white/90 dark:bg-gray-200/90 backdrop-blur-sm",
         isHighlighted
           ? isRoot
-            ? "bg-red-500 text-white shadow-lg scale-110"
-            : "bg-blue-500 text-white shadow-lg scale-110"
-          : "bg-gray-300 text-gray-800 opacity-70 hover:opacity-100 hover:scale-105",
+            ? "border-red-600 text-red-600 shadow-lg"
+            : "border-blue-600 text-blue-600 shadow-md"
+          : "border-gray-500 text-gray-700",
       )}
       onClick={onClick}
       style={{
-        pointerEvents: 'auto', // Ensure clickability
+        pointerEvents: 'auto',
       }}
     >
       {content}
