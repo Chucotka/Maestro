@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useTheme } from 'next-themes';
 
 const NUM_FRETS = 24;
-const STRING_HEIGHT_PX = 40; // Reduced for better vertical fit
+const STRING_HEIGHT_PX = 40;
 const FRET_NUMBER_HEIGHT_PX = 30;
 const STRING_LABEL_WIDTH_PX = 40;
 
@@ -38,7 +38,6 @@ const Fretboard: React.FC = () => {
     });
 
     resizeObserver.observe(container);
-    // Initial call
     const containerWidth = container.getBoundingClientRect().width;
     if (containerWidth > 0) {
         setFretWidth(containerWidth / NUM_FRETS);
@@ -89,7 +88,7 @@ const Fretboard: React.FC = () => {
   const markerSize = Math.min(fretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-gray-950 rounded-lg shadow-xl overflow-hidden w-full">
+    <div className="p-4 md:p-6 lg:p-8 bg-slate-50 dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full">
       <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">Fret Maestro</h2>
 
       <div className="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center">
@@ -171,13 +170,13 @@ const Fretboard: React.FC = () => {
 
           <div
             ref={fretboardContainerRef}
-            className="relative border-l-8 border-stone-700 dark:border-stone-400 flex-grow bg-stone-200 dark:bg-stone-800 rounded-r-md"
+            className="relative border-l-8 border-stone-600 dark:border-stone-300 flex-grow bg-amber-100 dark:bg-stone-900 rounded-r-md"
             style={{ height: `${currentTuning.length * STRING_HEIGHT_PX}px` }}
           >
             {Array.from({ length: NUM_FRETS }).map((_, i) => (
               <div
                 key={`fret-line-${i + 1}`}
-                className="absolute top-0 h-full w-[1.5px] bg-stone-400 dark:bg-stone-600"
+                className="absolute top-0 h-full w-[1.5px] bg-stone-500 dark:bg-stone-600"
                 style={{ left: `${(i + 1) * fretWidth}px` }}
               />
             ))}
@@ -185,7 +184,7 @@ const Fretboard: React.FC = () => {
             {FRET_DOT_FRETS_SINGLE.map((fret) => (
               <div
                 key={`dot-single-${fret}`}
-                className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
+                className="absolute rounded-full bg-stone-400/60 dark:bg-stone-500/40 w-2 h-2 md:w-3 md:h-3"
                 style={{
                   left: `${fret * fretWidth - fretWidth / 2}px`,
                   top: `50%`,
@@ -196,7 +195,7 @@ const Fretboard: React.FC = () => {
             {FRET_DOT_FRETS_DOUBLE.map((fret) => (
               <React.Fragment key={`dot-double-${fret}`}>
                 <div
-                  className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
+                  className="absolute rounded-full bg-stone-400/60 dark:bg-stone-500/40 w-2 h-2 md:w-3 md:h-3"
                   style={{
                     left: `${fret * fretWidth - fretWidth / 2}px`,
                     top: `calc(50% - ${STRING_HEIGHT_PX * 1.5}px)`,
@@ -204,7 +203,7 @@ const Fretboard: React.FC = () => {
                   }}
                 />
                 <div
-                  className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
+                  className="absolute rounded-full bg-stone-400/60 dark:bg-stone-500/40 w-2 h-2 md:w-3 md:h-3"
                   style={{
                     left: `${fret * fretWidth - fretWidth / 2}px`,
                     top: `calc(50% + ${STRING_HEIGHT_PX * 1.5}px)`,
@@ -244,7 +243,7 @@ const Fretboard: React.FC = () => {
             {currentTuning.map((_, i) => (
               <div
                 key={`string-line-${i}`}
-                className="absolute left-0 w-full h-[1.5px] bg-gradient-to-r from-stone-600 to-stone-400 dark:from-stone-400 dark:to-stone-300"
+                className="absolute left-0 w-full h-[1.5px] bg-gradient-to-r from-slate-600 to-slate-400 dark:from-slate-500 dark:to-slate-300"
                 style={{ top: `${i * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2}px`, transform: 'translateY(-50%)' }}
               />
             ))}

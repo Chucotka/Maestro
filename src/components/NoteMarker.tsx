@@ -19,19 +19,19 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full font-semibold cursor-pointer transition-all duration-150 ease-in-out border-2",
-        "bg-white/90 dark:bg-gray-200/90 backdrop-blur-sm",
+        "flex items-center justify-center rounded-full font-bold cursor-pointer transition-all duration-150 ease-in-out border-2 backdrop-blur-sm",
+        "bg-slate-100/80 dark:bg-slate-900/70", // Base background
         isHighlighted
           ? isRoot
-            ? "border-red-600 text-red-600 shadow-lg"
-            : "border-blue-600 text-blue-600 shadow-md"
-          : "border-gray-500 text-gray-700",
+            ? "border-red-500 text-red-600 dark:border-red-400 dark:text-red-400 shadow-lg shadow-red-500/30"
+            : "border-sky-500 text-sky-600 dark:border-sky-400 dark:text-sky-400 shadow-md shadow-sky-500/30"
+          : "border-slate-400 text-slate-600 dark:border-slate-600 dark:text-slate-300",
       )}
       onClick={onClick}
       style={{
         width: `${size}px`,
         height: `${size}px`,
-        fontSize: `${size * 0.55}px`, // Adjust font size relative to marker size
+        fontSize: `${size * 0.55}px`,
         pointerEvents: 'auto',
       }}
     >
