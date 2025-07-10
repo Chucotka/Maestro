@@ -27,16 +27,12 @@ const Fretboard: React.FC = () => {
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
-  // Using the simpler Tone.Synth which worked during diagnostics
   const synth = useRef<Tone.Synth | null>(null);
 
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    // Initialize a basic synth on component mount
     synth.current = new Tone.Synth().toDestination();
-    
-    // Clean up the synth on component unmount
     return () => {
       synth.current?.dispose();
     };
@@ -46,11 +42,9 @@ const Fretboard: React.FC = () => {
     try {
       await Tone.start();
       if (Tone.context.state === 'running') {
-        // This is the key fix: wait a moment for the audio context to stabilize
-        // before changing the state and re-rendering the component.
         setTimeout(() => {
           setIsAudioEnabled(true);
-        }, 100); // 100ms delay
+        }, 100);
       } else {
         console.error("Audio context failed to start.");
       }
@@ -288,32 +282,60 @@ const Fretboard: React.FC = () => {
               </React.Fragment>
             ))}
 
-            {fretboardNotes.map((note, index) => {
-              const shouldRender = showAllNotes || note.isScaleNote;
-              if (!shouldRender || note.fretNumber === 0) {
-                return null;
-              }
+            {/* Open String Notes */}
+            {fretboardNotes
+              .filter((note) => note.fretNumber === 0)
+              .map((note, index) => {
+                const shouldRender = showAllNotes || note.isScaleNote;
+                if (!shouldRender) return null;
 
-              const leftPos = note.fretNumber * fretWidth - fretWidth / 2;
-              const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
-              const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
+                const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
+                const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
 
-              return (
-                <div
-                  key={`note-${index}`}
-                  className="absolute -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: `${leftPos}px`, top: `${topPos}px`, zIndex: 10 }}
-                >
-                  <NoteMarker
-                    content={markerContent}
-                    isRoot={note.isRoot}
-                    isHighlighted={note.isScaleNote}
-                    size={markerSize}
-                    onClick={() => handleNoteClick(note.noteWithOctave)}
-                  />
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={`note-open-${index}`}
+                    className="absolute -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `-4px`, top: `${topPos}px`, zIndex: 10 }}
+                  >
+                    <NoteMarker
+                      content={markerContent}
+                      isRoot={note.isRoot}
+                      isHighlighted={note.isScaleNote}
+                      size={markerSize * 0.85}
+                      onClick={() => handleNoteClick(note.noteWithOctave)}
+                    />
+                  </div>
+                );
+              })}
+
+            {/* Fretted Notes */}
+            {fretboardNotes
+              .filter((note) => note.fretNumber > 0)
+              .map((note, index) => {
+                const shouldRender = showAllNotes || note.isScaleNote;
+                if (!shouldRender) return null;
+
+                const leftPos = note.fretNumber * fretWidth - fretWidth / 2;
+                const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
+                const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
+
+                return (
+                  <div
+                    key={`note-fretted-${index}`}
+                    className="absolute -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `${leftPos}px`, top: `${topPos}px`, zIndex: 10 }}
+                  >
+                    <NoteMarker
+                      content={markerContent}
+                      isRoot={note.isRoot}
+                      isHighlighted={note.isScaleNote}
+                      size={markerSize}
+                      onClick={() => handleNoteClick(note.noteWithOctave)}
+                    />
+                  </div>
+                );
+              })}
 
             {displayTuning.map((_, i) => (
               <div
