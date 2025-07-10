@@ -27,33 +27,30 @@ const Fretboard: React.FC = () => {
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
-  // Using a basic synth for maximum compatibility during debugging
-  const synth = useRef<Tone.Synth | null>(null);
+  const synth = useRef<Tone.PluckSynth | null>(null);
 
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    // Initialize the synth on component mount.
-    synth.current = new Tone.Synth().toDestination();
+    // Initialize a guitar-like synth on component mount
+    synth.current = new Tone.PluckSynth().toDestination();
     
+    // Clean up the synth on component unmount
     return () => {
       synth.current?.dispose();
     };
   }, []);
 
   const enableAudio = async () => {
-    alert("Шаг 1: Нажата кнопка 'Включить звук'. Начинаю активацию аудио...");
     try {
       await Tone.start();
-      alert(`Шаг 2: Tone.start() выполнен успешно! Текущее состояние аудио: ${Tone.context.state}`);
       if (Tone.context.state === 'running') {
         setIsAudioEnabled(true);
-        alert("Шаг 3: Аудио готово. Гриф сейчас появится.");
       } else {
-        alert(`Шаг 3 (ОШИБКА): Аудио не запустилось. Состояние: ${Tone.context.state}. Пожалуйста, проверьте настройки браузера.`);
+        console.error("Audio context failed to start.");
       }
-    } catch (e: any) {
-      alert(`Критическая ошибка на Шаге 2: Не удалось выполнить Tone.start(). Сообщение: ${e.message}`);
+    } catch (e) {
+      console.error("Error starting audio context:", e);
     }
   };
 
@@ -121,16 +118,8 @@ const Fretboard: React.FC = () => {
   }, [displayTuning, scaleNotes, selectedRoot]);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    alert(`Шаг 4: Нажата нота '${noteWithOctave}'.`);
-    const isSynthReady = !!synth.current;
-    const isContextRunning = Tone.context.state === 'running';
-    alert(`Шаг 5: Проверка системы. Синтезатор готов: ${isSynthReady}. Аудио запущено: ${isContextRunning}.`);
-
-    if (isSynthReady && isContextRunning) {
-      alert("Шаг 6: Все проверки пройдены. Воспроизвожу ноту...");
+    if (synth.current && Tone.context.state === 'running') {
       synth.current.triggerAttackRelease(noteWithOctave, "8n");
-    } else {
-      alert("Шаг 6 (ОШИБКА): Не могу воспроизвести ноту. Одна из проверок не пройдена.");
     }
   };
 
@@ -139,13 +128,13 @@ const Fretboard: React.FC = () => {
   if (!isAudioEnabled) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full min-h-[50vh]">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Диагностика звука</h2>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Аудио отключено</h2>
         <p className="text-gray-600 dark:text-gray-300 mb-6 text-center max-w-md">
-          Пожалуйста, нажмите кнопку ниже, чтобы начать пошаговую проверку аудио.
+          Нажмите кнопку, чтобы включить звук для интерактивного грифа.
         </p>
         <Button onClick={enableAudio} size="lg">
           <Music className="mr-2 h-5 w-5" />
-          Начать проверку
+          Включить звук
         </Button>
       </div>
     );
