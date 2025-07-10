@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useLayoutEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import * as Tone from 'tone';
 import { getScaleNotes, SCALES } from '@/lib/fretboardUtils';
 import { cn } from '@/lib/utils';
@@ -18,49 +18,33 @@ interface PianoKey {
   isBlack: boolean;
 }
 
+// Generates 61 keys for a 5-octave keyboard (C2-C7)
 const ALL_PIANO_KEYS: PianoKey[] = (() => {
   const keys: PianoKey[] = [];
   const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const BLACK_KEYS_IN_OCTAVE = ["C#", "D#", "F#", "G#", "A#"];
 
-  keys.push({ note: 'A', octave: 0, noteWithOctave: 'A0', isBlack: false });
-  keys.push({ note: 'A#', octave: 0, noteWithOctave: 'A#0', isBlack: true });
-  keys.push({ note: 'B', octave: 0, noteWithOctave: 'B0', isBlack: false });
-
-  for (let octave = 1; octave <= 7; octave++) {
+  for (let octave = 2; octave <= 6; octave++) {
     NOTES.forEach(note => {
       keys.push({ note, octave, noteWithOctave: `${note}${octave}`, isBlack: BLACK_KEYS_IN_OCTAVE.includes(note) });
     });
   }
-  keys.push({ note: 'C', octave: 8, noteWithOctave: 'C8', isBlack: false });
+  keys.push({ note: 'C', octave: 7, noteWithOctave: 'C7', isBlack: false });
   return keys;
 })();
 
 const whiteKeys = ALL_PIANO_KEYS.filter(k => !k.isBlack);
 const blackKeys = ALL_PIANO_KEYS.filter(k => k.isBlack);
 
+const WHITE_KEY_WIDTH = 40;
+const BLACK_KEY_WIDTH = 24;
+const PIANO_HEIGHT_PX = 224; // Corresponds to h-56
+
 const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth }) => {
   const [showNoteNames, setShowNoteNames] = useState(false);
-  const [keyDimensions, setKeyDimensions] = useState({ whiteKeyWidth: 20, blackKeyWidth: 12 });
   const pianoContainerRef = useRef<HTMLDivElement>(null);
 
   const scaleNotes = useMemo(() => getScaleNotes(selectedRoot, SCALES[selectedScaleName]), [selectedRoot, selectedScaleName]);
-
-  useLayoutEffect(() => {
-    const container = pianoContainerRef.current;
-    if (!container) return;
-
-    const observer = new ResizeObserver(entries => {
-      if (entries[0]) {
-        const containerWidth = entries[0].contentRect.width;
-        const whiteKeyWidth = containerWidth / whiteKeys.length;
-        setKeyDimensions({ whiteKeyWidth, blackKeyWidth: whiteKeyWidth * 0.6 });
-      }
-    });
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
 
   const handleNoteClick = (noteWithOctave: string) => {
     if (synth.current && Tone.context.state === 'running') {
@@ -77,54 +61,64 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth })
         </div>
       </div>
 
-      <div className="w-full h-56 border-2 border-slate-300 dark:border-slate-700 rounded-lg bg-slate-200 dark:bg-slate-900 p-1">
-        <div ref={pianoContainerRef} className="relative w-full h-full">
-          <div className="flex w-full h-full">
-            {whiteKeys.map(key => {
+      <div className="w-full border-2 border-slate-300 dark:border-slate-700 rounded-lg bg-slate-200 dark:bg-slate-900 p-1 overflow-hidden">
+        <div
+          ref={pianoContainerRef}
+          className="relative h-full overflow-x-auto overflow-y-hidden"
+          style={{ height: `${PIANO_HEIGHT_PX}px` }}
+        >
+          <div
+            className="relative h-full"
+            style={{ width: `${whiteKeys.length * WHITE_KEY_WIDTH}px` }}
+          >
+            <div className="flex w-full h-full">
+              {whiteKeys.map(key => {
+                const isHighlighted = scaleNotes.includes(key.note);
+                const isRoot = isHighlighted && key.note === selectedRoot;
+                return (
+                  <button
+                    key={key.noteWithOctave}
+                    onClick={() => handleNoteClick(key.noteWithOctave)}
+                    className={cn(
+                      'flex-shrink-0 flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 text-sm bg-white hover:bg-slate-100',
+                      isHighlighted && { 'border-2': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-100 dark:bg-red-900/50': isRoot, 'bg-sky-100 dark:bg-sky-900/50': !isRoot }
+                    )}
+                    style={{ width: `${WHITE_KEY_WIDTH}px` }}
+                  >
+                    <span className={cn('font-bold select-none text-black', isHighlighted && { 'text-red-600 dark:text-red-400': isRoot, 'text-sky-600 dark:text-sky-400': !isRoot })}>
+                      {showNoteNames ? key.note : ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {blackKeys.map(key => {
               const isHighlighted = scaleNotes.includes(key.note);
               const isRoot = isHighlighted && key.note === selectedRoot;
+              const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.octave > key.octave || (wk.octave === key.octave && wk.note > key.note)) -1;
+
               return (
                 <button
                   key={key.noteWithOctave}
                   onClick={() => handleNoteClick(key.noteWithOctave)}
                   className={cn(
-                    'flex-auto flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 text-sm bg-white hover:bg-slate-100',
-                    isHighlighted && { 'border-2': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-100 dark:bg-red-900/50': isRoot, 'bg-sky-100 dark:bg-sky-900/50': !isRoot }
+                    'absolute flex items-start justify-center pt-2 border-slate-400 rounded-b-sm transition-all duration-100 text-sm z-10 bg-slate-800 hover:bg-slate-700 border-2',
+                    isHighlighted && { 'border-4': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-800': isRoot, 'bg-sky-800': !isRoot }
                   )}
+                  style={{
+                    width: `${BLACK_KEY_WIDTH}px`,
+                    height: '60%',
+                    left: `${(precedingWhiteKeyIndex + 1) * WHITE_KEY_WIDTH - (BLACK_KEY_WIDTH / 2)}px`,
+                    top: 0,
+                  }}
                 >
-                  <span className={cn('font-bold select-none text-black', isHighlighted && { 'text-red-600 dark:text-red-400': isRoot, 'text-sky-600 dark:text-sky-400': !isRoot })}>
+                  <span className={cn('font-bold select-none text-white', isHighlighted && { 'text-red-400': isRoot, 'text-sky-400': !isRoot })}>
                     {showNoteNames ? key.note : ''}
                   </span>
                 </button>
               );
             })}
           </div>
-          {blackKeys.map(key => {
-            const isHighlighted = scaleNotes.includes(key.note);
-            const isRoot = isHighlighted && key.note === selectedRoot;
-            const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.octave > key.octave || (wk.octave === key.octave && wk.note > key.note)) -1;
-
-            return (
-              <button
-                key={key.noteWithOctave}
-                onClick={() => handleNoteClick(key.noteWithOctave)}
-                className={cn(
-                  'absolute flex items-start justify-center pt-2 border-slate-400 rounded-b-sm transition-all duration-100 text-sm z-10 bg-slate-800 hover:bg-slate-700 border-2',
-                  isHighlighted && { 'border-4': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-800': isRoot, 'bg-sky-800': !isRoot }
-                )}
-                style={{
-                  width: `${keyDimensions.blackKeyWidth}px`,
-                  height: '60%',
-                  left: `${(precedingWhiteKeyIndex + 1) * keyDimensions.whiteKeyWidth - (keyDimensions.blackKeyWidth / 2)}px`,
-                  top: 0,
-                }}
-              >
-                <span className={cn('font-bold select-none text-white', isHighlighted && { 'text-red-400': isRoot, 'text-sky-400': !isRoot })}>
-                  {showNoteNames ? key.note : ''}
-                </span>
-              </button>
-            );
-          })}
         </div>
       </div>
 
