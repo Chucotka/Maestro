@@ -2,16 +2,14 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface NoteMarkerProps {
-  noteName: string;
-  sequenceNumber: number;
+  content: string | number; // Can be note name or sequence number
   isRoot: boolean;
-  isHighlighted: boolean;
+  isHighlighted: boolean; // True for scale notes, false for non-scale notes (if showing all)
   onClick?: () => void;
 }
 
 const NoteMarker: React.FC<NoteMarkerProps> = ({
-  noteName,
-  sequenceNumber,
+  content,
   isRoot,
   isHighlighted,
   onClick,
@@ -29,12 +27,10 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
       )}
       onClick={onClick}
       style={{
-        // These styles will be overridden by parent positioning for actual placement
-        // This is just for visual representation of the marker itself
         pointerEvents: 'auto', // Ensure clickability
       }}
     >
-      {sequenceNumber}
+      {content}
     </div>
   );
 };

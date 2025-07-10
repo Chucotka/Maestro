@@ -3,6 +3,7 @@ import { getNoteAtFret, getScaleNotes, ALL_NOTES, GUITAR_TUNINGS, SCALES } from 
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch"; // Import Switch component
 import { cn } from '@/lib/utils';
 
 const NUM_FRETS = 24; // 24 frets as per requirement
@@ -17,6 +18,8 @@ const FRET_DOT_FRETS_DOUBLE = [12, 24];
 const Fretboard: React.FC = () => {
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
+  const [showAllNotes, setShowAllNotes] = useState<boolean>(false); // New state for showing all notes
+  const [showNoteNames, setShowNoteNames] = useState<boolean>(false); // New state for showing note names
 
   const currentTuning = GUITAR_TUNINGS.STANDARD; // Using standard tuning for now
 
@@ -94,6 +97,26 @@ const Fretboard: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      {/* New Toggles */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-all-notes"
+            checked={showAllNotes}
+            onCheckedChange={setShowAllNotes}
+          />
+          <Label htmlFor="show-all-notes" className="text-gray-700 dark:text-gray-300">Show All Notes</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-note-names"
+            checked={showNoteNames}
+            onCheckedChange={setShowNoteNames}
+          />
+          <Label htmlFor="show-note-names" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
         </div>
       </div>
 
@@ -192,9 +215,12 @@ const Fretboard: React.FC = () => {
 
             {/* Note Markers */}
             {fretboardNotes.map((note, index) => {
-              if (note.isScaleNote) {
-                // Calculate position for the note marker
-                // Position it in the middle of the fret space
+              const shouldRender = showAllNotes || note.isScaleNote;
+              if (shouldRender) {
+                const markerContent = showNoteNames
+                  ? note.noteName
+                  : (note.isScaleNote ? note.sequenceNumber! : note.noteName); // Show note name for non-scale notes if not showing sequence
+
                 const leftPos = note.fretNumber * FRET_WIDTH_PX + FRET_WIDTH_PX / 2;
                 const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
 
@@ -205,10 +231,9 @@ const Fretboard: React.FC = () => {
                     style={{ left: `${leftPos}px`, top: `${topPos}px` }}
                   >
                     <NoteMarker
-                      noteName={note.noteName}
-                      sequenceNumber={note.sequenceNumber!}
+                      content={markerContent}
                       isRoot={note.isRoot}
-                      isHighlighted={true} // Always highlighted if it's a scale note
+                      isHighlighted={note.isScaleNote}
                       onClick={() => handleNoteClick(note.noteName, note.sequenceNumber)}
                     />
                   </div>
