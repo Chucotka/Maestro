@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from 'next-themes';
+import { Button } from './ui/button';
+import { Music } from 'lucide-react';
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -16,6 +18,7 @@ const FRET_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
 const FRET_DOT_FRETS_DOUBLE = [12, 24];
 
 const Fretboard: React.FC = () => {
+  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
@@ -29,20 +32,30 @@ const Fretboard: React.FC = () => {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    // Initialize a guitar-like synth on component mount
+    // Initialize the synth on component mount.
     synth.current = new Tone.PluckSynth().toDestination();
     
-    // Clean up the synth on component unmount
     return () => {
       synth.current?.dispose();
     };
   }, []);
+
+  const enableAudio = async () => {
+    try {
+      await Tone.start();
+      setIsAudioEnabled(true);
+    } catch (e) {
+      console.error("Failed to start audio context:", e);
+      // Optionally, show an error to the user
+    }
+  };
 
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
   // Reverse the tuning for standard guitar layout (high E on top, low E on bottom)
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
   useLayoutEffect(() => {
+    if (!isAudioEnabled) return; // Don't run if fretboard isn't visible
     const container = fretboardContainerRef.current;
     if (!container) return;
 
@@ -60,7 +73,7 @@ const Fretboard: React.FC = () => {
     }
 
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [isAudioEnabled]);
 
   const scaleNotes = useMemo(() => {
     const intervals = SCALES[selectedScaleName];
@@ -101,15 +114,28 @@ const Fretboard: React.FC = () => {
     return notes;
   }, [displayTuning, scaleNotes, selectedRoot]);
 
-  const handleNoteClick = async (noteWithOctave: string) => {
-    // Start audio context on first user interaction
-    if (Tone.context.state !== 'running') {
-      await Tone.start();
+  const handleNoteClick = (noteWithOctave: string) => {
+    if (synth.current && Tone.context.state === 'running') {
+      synth.current.triggerAttackRelease(noteWithOctave, "8n");
     }
-    synth.current?.triggerAttackRelease(noteWithOctave, "8n");
   };
 
   const markerSize = Math.min(fretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
+
+  if (!isAudioEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full min-h-[50vh]">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Аудио отключено</h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6 text-center max-w-md">
+          Нажмите кнопку, чтобы включить звук для интерактивного грифа.
+        </p>
+        <Button onClick={enableAudio} size="lg">
+          <Music className="mr-2 h-5 w-5" />
+          Включить звук
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
