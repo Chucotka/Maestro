@@ -7,12 +7,21 @@ export const GUITAR_TUNINGS = {
 };
 
 export const SCALES = {
-  MAJOR: [0, 2, 4, 5, 7, 9, 11], // Intervals in semitones
+  // --- Major / Minor ---
+  MAJOR: [0, 2, 4, 5, 7, 9, 11],
   MINOR: [0, 2, 3, 5, 7, 8, 10],
-  MIXOLYDIAN: [0, 2, 4, 5, 7, 9, 10],
-  PHRYGIAN: [0, 1, 3, 5, 7, 8, 10],
+  "HARMONIC MINOR": [0, 2, 3, 5, 7, 8, 11],
+  "MELODIC MINOR": [0, 2, 3, 5, 7, 9, 11],
+  // --- Pentatonics / Blues ---
   "MAJOR PENTATONIC": [0, 2, 4, 7, 9],
   "MINOR PENTATONIC": [0, 3, 5, 7, 10],
+  BLUES: [0, 3, 5, 6, 7, 10],
+  // --- Modes ---
+  DORIAN: [0, 2, 3, 5, 7, 9, 10],
+  PHRYGIAN: [0, 1, 3, 5, 7, 8, 10],
+  LYDIAN: [0, 2, 4, 6, 7, 9, 11],
+  MIXOLYDIAN: [0, 2, 4, 5, 7, 9, 10],
+  LOCRIAN: [0, 1, 3, 5, 6, 8, 10],
 };
 
 /**

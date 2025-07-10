@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes'; // Import useTheme
 
 const NUM_FRETS = 24; // 24 frets as per requirement
-const STRING_HEIGHT_PX = 30; // Visual spacing for strings
-const FRET_WIDTH_PX = 80; // Visual spacing for frets (approximate)
+const STRING_HEIGHT_PX = 40; // Visual spacing for strings
+const FRET_WIDTH_PX = 90; // Visual spacing for frets (approximate)
 const FRET_NUMBER_HEIGHT_PX = 30; // Space for fret numbers above the board
 const STRING_LABEL_WIDTH_PX = 40; // Space for string labels to the left
 
