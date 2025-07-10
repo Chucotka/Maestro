@@ -5,6 +5,7 @@ interface NoteMarkerProps {
   content: string | number;
   isRoot: boolean;
   isHighlighted: boolean;
+  size: number;
   onClick?: () => void;
 }
 
@@ -12,13 +13,13 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
   content,
   isRoot,
   isHighlighted,
+  size,
   onClick,
 }) => {
   return (
     <div
       className={cn(
         "flex items-center justify-center rounded-full font-semibold cursor-pointer transition-all duration-150 ease-in-out border-2",
-        "w-7 h-7 text-sm",
         "bg-white/90 dark:bg-gray-200/90 backdrop-blur-sm",
         isHighlighted
           ? isRoot
@@ -28,6 +29,9 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
       )}
       onClick={onClick}
       style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        fontSize: `${size * 0.55}px`, // Adjust font size relative to marker size
         pointerEvents: 'auto',
       }}
     >
