@@ -27,12 +27,14 @@ const Fretboard: React.FC = () => {
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
+  // Using a simpler synth for debugging purposes
   const synth = useRef<Tone.Synth | null>(null);
 
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     console.log("Fretboard component mounted. Initializing synth...");
+    // Use a basic synth to rule out issues with PluckSynth
     synth.current = new Tone.Synth().toDestination();
     console.log("Synth initialized:", synth.current);
     
@@ -215,7 +217,7 @@ const Fretboard: React.FC = () => {
       </div>
 
       <div className="flex flex-col items-start w-full">
-        <div className="flex w-full flex-row-reverse" style={{ paddingRight: STRING_LABEL_WIDTH_PX }}>
+        <div className="flex w-full" style={{ paddingLeft: STRING_LABEL_WIDTH_PX }}>
           {Array.from({ length: NUM_FRETS }).map((_, i) => {
             const fretNumber = i + 1;
             return (
@@ -230,7 +232,7 @@ const Fretboard: React.FC = () => {
           })}
         </div>
 
-        <div className="flex w-full flex-row-reverse">
+        <div className="flex w-full">
           <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
             {currentTuning.map((note, i) => (
               <div
@@ -245,14 +247,14 @@ const Fretboard: React.FC = () => {
 
           <div
             ref={fretboardContainerRef}
-            className="relative border-r-8 border-stone-700 dark:border-stone-300 flex-grow bg-amber-200 dark:bg-stone-900 rounded-l-md transition-colors duration-300"
+            className="relative border-l-8 border-stone-700 dark:border-stone-300 flex-grow bg-amber-200 dark:bg-stone-900 rounded-r-md transition-colors duration-300"
             style={{ height: `${currentTuning.length * STRING_HEIGHT_PX}px` }}
           >
             {Array.from({ length: NUM_FRETS }).map((_, i) => (
               <div
                 key={`fret-line-${i + 1}`}
                 className="absolute top-0 h-full w-[1.5px] bg-stone-400 dark:bg-stone-600"
-                style={{ left: `${(NUM_FRETS - (i + 1)) * fretWidth}px` }}
+                style={{ left: `${(i + 1) * fretWidth}px` }}
               />
             ))}
 
@@ -261,7 +263,7 @@ const Fretboard: React.FC = () => {
                 key={`dot-single-${fret}`}
                 className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
                 style={{
-                  left: `${(NUM_FRETS - fret + 0.5) * fretWidth}px`,
+                  left: `${fret * fretWidth - fretWidth / 2}px`,
                   top: `50%`,
                   transform: 'translate(-50%, -50%)',
                 }}
@@ -272,7 +274,7 @@ const Fretboard: React.FC = () => {
                 <div
                   className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
                   style={{
-                    left: `${(NUM_FRETS - fret + 0.5) * fretWidth}px`,
+                    left: `${fret * fretWidth - fretWidth / 2}px`,
                     top: `calc(50% - ${STRING_HEIGHT_PX * 1.5}px)`,
                     transform: 'translate(-50%, -50%)',
                   }}
@@ -280,7 +282,7 @@ const Fretboard: React.FC = () => {
                 <div
                   className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
                   style={{
-                    left: `${(NUM_FRETS - fret + 0.5) * fretWidth}px`,
+                    left: `${fret * fretWidth - fretWidth / 2}px`,
                     top: `calc(50% + ${STRING_HEIGHT_PX * 1.5}px)`,
                     transform: 'translate(-50%, -50%)',
                   }}
@@ -294,7 +296,7 @@ const Fretboard: React.FC = () => {
                 return null;
               }
 
-              const leftPos = (NUM_FRETS - note.fretNumber + 0.5) * fretWidth;
+              const leftPos = note.fretNumber * fretWidth - fretWidth / 2;
               const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
               const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
 
