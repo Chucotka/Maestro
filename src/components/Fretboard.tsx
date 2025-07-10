@@ -1,13 +1,11 @@
-import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getNoteAtFret, getScaleNotes, ALL_NOTES, GUITAR_TUNINGS, SCALES } from '@/lib/fretboardUtils';
+import { getNoteAtFret, getScaleNotes, GUITAR_TUNINGS, SCALES } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from 'next-themes';
-import { Button } from './ui/button';
-import { Music } from 'lucide-react';
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -17,47 +15,25 @@ const STRING_LABEL_WIDTH_PX = 40;
 const FRET_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
 const FRET_DOT_FRETS_DOUBLE = [12, 24];
 
-const Fretboard: React.FC = () => {
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-  const [selectedRoot, setSelectedRoot] = useState<string>("C");
-  const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
+interface FretboardProps {
+  selectedRoot: string;
+  selectedScaleName: keyof typeof SCALES;
+  synth: React.MutableRefObject<Tone.Synth | null>;
+}
+
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, synth }) => {
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
-  const synth = useRef<Tone.Synth | null>(null);
-
   const { theme, setTheme } = useTheme();
-
-  useEffect(() => {
-    synth.current = new Tone.Synth().toDestination();
-    return () => {
-      synth.current?.dispose();
-    };
-  }, []);
-
-  const enableAudio = async () => {
-    try {
-      await Tone.start();
-      if (Tone.context.state === 'running') {
-        setTimeout(() => {
-          setIsAudioEnabled(true);
-        }, 100);
-      } else {
-        console.error("Audio context failed to start.");
-      }
-    } catch (e) {
-      console.error("Error starting audio context:", e);
-    }
-  };
 
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
   useLayoutEffect(() => {
-    if (!isAudioEnabled) return;
     const container = fretboardContainerRef.current;
     if (!container) return;
 
@@ -75,7 +51,7 @@ const Fretboard: React.FC = () => {
     }
 
     return () => resizeObserver.disconnect();
-  }, [isAudioEnabled]);
+  }, []);
 
   const scaleNotes = useMemo(() => {
     const intervals = SCALES[selectedScaleName];
@@ -124,57 +100,9 @@ const Fretboard: React.FC = () => {
 
   const markerSize = Math.min(fretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
 
-  if (!isAudioEnabled) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full min-h-[50vh]">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Аудио отключено</h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-6 text-center max-w-md">
-          Нажмите кнопку, чтобы включить звук для интерактивного грифа.
-        </p>
-        <Button onClick={enableAudio} size="lg">
-          <Music className="mr-2 h-5 w-5" />
-          Включить звук
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
-      <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">Fret Maestro</h2>
-
       <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-8 justify-center items-center">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="root-select" className="text-gray-700 dark:text-gray-300">Root Note:</Label>
-          <Select value={selectedRoot} onValueChange={setSelectedRoot}>
-            <SelectTrigger id="root-select" className="w-[120px]">
-              <SelectValue placeholder="Select Root" />
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_NOTES.map((note) => (
-                <SelectItem key={note} value={note}>{note}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Label htmlFor="scale-select" className="text-gray-700 dark:text-gray-300">Scale/Mode:</Label>
-          <Select
-            value={selectedScaleName}
-            onValueChange={(value) => setSelectedScaleName(value as keyof typeof SCALES)}
-          >
-            <SelectTrigger id="scale-select" className="w-[180px]">
-              <SelectValue placeholder="Select Scale/Mode" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(SCALES).map((scale) => (
-                <SelectItem key={scale} value={scale}>{scale}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="flex items-center gap-2">
           <Label htmlFor="tuning-select" className="text-gray-700 dark:text-gray-300">Tuning:</Label>
           <Select
@@ -191,9 +119,6 @@ const Fretboard: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center">
         <div className="flex items-center space-x-2">
           <Switch id="show-all-notes" checked={showAllNotes} onCheckedChange={setShowAllNotes} />
           <Label htmlFor="show-all-notes" className="text-gray-700 dark:text-gray-300">Show All Notes</Label>
@@ -282,7 +207,6 @@ const Fretboard: React.FC = () => {
               </React.Fragment>
             ))}
 
-            {/* Open String Notes */}
             {fretboardNotes
               .filter((note) => note.fretNumber === 0)
               .map((note, index) => {
@@ -309,7 +233,6 @@ const Fretboard: React.FC = () => {
                 );
               })}
 
-            {/* Fretted Notes */}
             {fretboardNotes
               .filter((note) => note.fretNumber > 0)
               .map((note, index) => {
