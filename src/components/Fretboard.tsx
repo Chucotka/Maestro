@@ -6,8 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from 'next-themes';
-import { Button } from './ui/button';
-import { Music } from 'lucide-react';
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -18,7 +16,6 @@ const FRET_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
 const FRET_DOT_FRETS_DOUBLE = [12, 24];
 
 const Fretboard: React.FC = () => {
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
@@ -27,41 +24,25 @@ const Fretboard: React.FC = () => {
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
-  // Using a simpler synth for debugging purposes
-  const synth = useRef<Tone.Synth | null>(null);
+  const synth = useRef<Tone.PluckSynth | null>(null);
 
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    console.log("Fretboard component mounted. Initializing synth...");
-    // Use a basic synth to rule out issues with PluckSynth
-    synth.current = new Tone.Synth().toDestination();
-    console.log("Synth initialized:", synth.current);
+    // Initialize a guitar-like synth on component mount
+    synth.current = new Tone.PluckSynth().toDestination();
     
+    // Clean up the synth on component unmount
     return () => {
-      console.log("Fretboard component unmounting. Disposing synth.");
       synth.current?.dispose();
     };
   }, []);
 
-  const enableAudio = async () => {
-    console.log("'Enable Audio' button clicked.");
-    console.log("AudioContext state before start:", Tone.context.state);
-    try {
-      await Tone.start();
-      console.log("Tone.start() completed successfully.");
-      console.log("AudioContext state after start:", Tone.context.state);
-      setIsAudioEnabled(true);
-    } catch (e) {
-      console.error("Error starting Tone.js AudioContext:", e);
-      alert("Failed to start audio. See console for details.");
-    }
-  };
-
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
+  // Reverse the tuning for standard guitar layout (high E on top, low E on bottom)
+  const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
   useLayoutEffect(() => {
-    if (!isAudioEnabled) return;
     const container = fretboardContainerRef.current;
     if (!container) return;
 
@@ -79,7 +60,7 @@ const Fretboard: React.FC = () => {
     }
 
     return () => resizeObserver.disconnect();
-  }, [isAudioEnabled]);
+  }, []);
 
   const scaleNotes = useMemo(() => {
     const intervals = SCALES[selectedScaleName];
@@ -97,7 +78,7 @@ const Fretboard: React.FC = () => {
       isRoot: boolean;
     }[] = [];
 
-    currentTuning.forEach((openStringNote, stringIndex) => {
+    displayTuning.forEach((openStringNote, stringIndex) => {
       for (let fret = 0; fret <= NUM_FRETS; fret++) {
         const noteWithOctave = getNoteAtFret(openStringNote, fret);
         const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
@@ -118,34 +99,17 @@ const Fretboard: React.FC = () => {
       }
     });
     return notes;
-  }, [currentTuning, scaleNotes, selectedRoot]);
+  }, [displayTuning, scaleNotes, selectedRoot]);
 
-  const handleNoteClick = (noteWithOctave: string) => {
-    console.log(`Note clicked: ${noteWithOctave}`);
-    if (synth.current && Tone.context.state === 'running') {
-      console.log("Synth found and audio context is running. Triggering attack/release.");
-      synth.current.triggerAttackRelease(noteWithOctave, "8n");
-    } else {
-      console.error("Cannot play note. Synth available:", !!synth.current, "AudioContext state:", Tone.context.state);
+  const handleNoteClick = async (noteWithOctave: string) => {
+    // Start audio context on first user interaction
+    if (Tone.context.state !== 'running') {
+      await Tone.start();
     }
+    synth.current?.triggerAttackRelease(noteWithOctave, "8n");
   };
 
   const markerSize = Math.min(fretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
-
-  if (!isAudioEnabled) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full min-h-[50vh]">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Аудио отключено</h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-6 text-center max-w-md">
-          Нажмите кнопку, чтобы включить звук для интерактивного грифа.
-        </p>
-        <Button onClick={enableAudio} size="lg">
-          <Music className="mr-2 h-5 w-5" />
-          Включить звук
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
@@ -234,7 +198,7 @@ const Fretboard: React.FC = () => {
 
         <div className="flex w-full">
           <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
-            {currentTuning.map((note, i) => (
+            {displayTuning.map((note, i) => (
               <div
                 key={`string-label-${i}`}
                 className="flex items-center justify-center text-sm font-semibold text-gray-700 dark:text-gray-300"
@@ -248,7 +212,7 @@ const Fretboard: React.FC = () => {
           <div
             ref={fretboardContainerRef}
             className="relative border-l-8 border-stone-700 dark:border-stone-300 flex-grow bg-amber-200 dark:bg-stone-900 rounded-r-md transition-colors duration-300"
-            style={{ height: `${currentTuning.length * STRING_HEIGHT_PX}px` }}
+            style={{ height: `${displayTuning.length * STRING_HEIGHT_PX}px` }}
           >
             {Array.from({ length: NUM_FRETS }).map((_, i) => (
               <div
@@ -317,7 +281,7 @@ const Fretboard: React.FC = () => {
               );
             })}
 
-            {currentTuning.map((_, i) => (
+            {displayTuning.map((_, i) => (
               <div
                 key={`string-line-${i}`}
                 className="absolute left-0 w-full h-[1.5px] bg-gradient-to-r from-gray-600 to-gray-400 dark:from-slate-500 dark:to-slate-300"
