@@ -77,7 +77,7 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth })
         </div>
       </div>
 
-      <div className="w-full h-48 border-2 border-slate-300 dark:border-slate-700 rounded-lg bg-slate-200 dark:bg-slate-900 p-1">
+      <div className="w-full h-56 border-2 border-slate-300 dark:border-slate-700 rounded-lg bg-slate-200 dark:bg-slate-900 p-1">
         <div ref={pianoContainerRef} className="relative w-full h-full">
           <div className="flex w-full h-full">
             {whiteKeys.map(key => {
@@ -88,7 +88,7 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth })
                   key={key.noteWithOctave}
                   onClick={() => handleNoteClick(key.noteWithOctave)}
                   className={cn(
-                    'flex-auto flex items-end justify-center p-1 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 text-xs bg-white hover:bg-slate-100',
+                    'flex-auto flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 text-sm bg-white hover:bg-slate-100',
                     isHighlighted && { 'border-2': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-100 dark:bg-red-900/50': isRoot, 'bg-sky-100 dark:bg-sky-900/50': !isRoot }
                   )}
                 >
@@ -109,7 +109,7 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth })
                 key={key.noteWithOctave}
                 onClick={() => handleNoteClick(key.noteWithOctave)}
                 className={cn(
-                  'absolute flex items-end justify-center p-1 border-slate-400 rounded-b-sm transition-all duration-100 text-xs z-10 bg-slate-800 hover:bg-slate-700 border-2',
+                  'absolute flex items-start justify-center pt-2 border-slate-400 rounded-b-sm transition-all duration-100 text-sm z-10 bg-slate-800 hover:bg-slate-700 border-2',
                   isHighlighted && { 'border-4': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-800': isRoot, 'bg-sky-800': !isRoot }
                 )}
                 style={{
