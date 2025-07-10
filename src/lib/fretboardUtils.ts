@@ -3,15 +3,15 @@ export const ALL_NOTES = [
 ];
 
 export const GUITAR_TUNINGS = {
-  "Standard":       ["E", "A", "D", "G", "B", "E"],
-  "Drop D":         ["D", "A", "D", "G", "B", "E"],
-  "Drop C#":        ["C#", "G#", "C#", "F#", "A#", "D#"],
-  "Drop C":         ["C", "G", "C", "F", "A", "D"],
-  "Open G":         ["D", "G", "D", "G", "B", "D"],
-  "Open D":         ["D", "A", "D", "F#", "A", "D"],
-  "Open C":         ["C", "G", "C", "G", "C", "E"],
-  "Open E":         ["E", "B", "E", "G#", "B", "E"],
-  "DADGAD":         ["D", "A", "D", "G", "A", "D"],
+  "Standard":       ["E2", "A2", "D3", "G3", "B3", "E4"],
+  "Drop D":         ["D2", "A2", "D3", "G3", "B3", "E4"],
+  "Drop C#":        ["C#2", "G#2", "C#3", "F#3", "A#3", "D#4"],
+  "Drop C":         ["C2", "G2", "C3", "F3", "A3", "D4"],
+  "Open G":         ["D2", "G2", "D3", "G3", "B3", "D4"],
+  "Open D":         ["D2", "A2", "D3", "F#3", "A3", "D4"],
+  "Open C":         ["C2", "G2", "C3", "G3", "C4", "E4"],
+  "Open E":         ["E2", "B2", "E3", "G#3", "B3", "E4"],
+  "DADGAD":         ["D2", "A2", "D3", "G3", "A3", "D4"],
 };
 
 export const SCALES = {
@@ -33,18 +33,32 @@ export const SCALES = {
 };
 
 /**
- * Calculates the note name at a specific fret on a given string.
- * @param openStringNote The note of the open string (e.g., "E").
+ * Calculates the note with octave at a specific fret on a given string.
+ * @param openStringNoteWithOctave The note of the open string with octave (e.g., "E2").
  * @param fretNumber The fret number (0 for open string).
- * @returns The note name (e.g., "G#").
+ * @returns The note name with octave (e.g., "G#4").
  */
-export const getNoteAtFret = (openStringNote: string, fretNumber: number): string => {
-  const startIndex = ALL_NOTES.indexOf(openStringNote.toUpperCase());
-  if (startIndex === -1) {
-    throw new Error(`Invalid open string note: ${openStringNote}`);
+export const getNoteAtFret = (openStringNoteWithOctave: string, fretNumber: number): string => {
+  const match = openStringNoteWithOctave.match(/([A-G]#?)([0-9])/);
+  if (!match) {
+    throw new Error(`Invalid open string note format: ${openStringNoteWithOctave}`);
   }
-  const noteIndex = (startIndex + fretNumber) % ALL_NOTES.length;
-  return ALL_NOTES[noteIndex];
+  const [, noteName, octaveStr] = match;
+  const octave = parseInt(octaveStr, 10);
+
+  const startIndex = ALL_NOTES.indexOf(noteName);
+  if (startIndex === -1) {
+    throw new Error(`Invalid open string note: ${noteName}`);
+  }
+
+  const totalSemitones = startIndex + fretNumber;
+  const noteIndex = totalSemitones % ALL_NOTES.length;
+  const octaveOffset = Math.floor(totalSemitones / ALL_NOTES.length);
+  
+  const finalNote = ALL_NOTES[noteIndex];
+  const finalOctave = octave + octaveOffset;
+
+  return `${finalNote}${finalOctave}`;
 };
 
 /**

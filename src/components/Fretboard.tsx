@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
+import * as Tone from 'tone';
 import { getNoteAtFret, getScaleNotes, ALL_NOTES, GUITAR_TUNINGS, SCALES } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,8 +23,18 @@ const Fretboard: React.FC = () => {
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
+  
+  const synth = useRef<Tone.PluckSynth | null>(null);
+  const audioStarted = useRef(false);
 
   const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    synth.current = new Tone.PluckSynth().toDestination();
+    return () => {
+      synth.current?.dispose();
+    };
+  }, []);
 
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
 
@@ -57,6 +68,7 @@ const Fretboard: React.FC = () => {
       stringIndex: number;
       fretNumber: number;
       noteName: string;
+      noteWithOctave: string;
       isScaleNote: boolean;
       sequenceNumber: number | null;
       isRoot: boolean;
@@ -64,7 +76,9 @@ const Fretboard: React.FC = () => {
 
     currentTuning.forEach((openStringNote, stringIndex) => {
       for (let fret = 0; fret <= NUM_FRETS; fret++) {
-        const noteName = getNoteAtFret(openStringNote, fret);
+        const noteWithOctave = getNoteAtFret(openStringNote, fret);
+        const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
+        
         const sequenceIndex = scaleNotes.indexOf(noteName);
         const isScaleNote = sequenceIndex !== -1;
         const isRoot = isScaleNote && noteName === selectedRoot;
@@ -73,6 +87,7 @@ const Fretboard: React.FC = () => {
           stringIndex,
           fretNumber: fret,
           noteName,
+          noteWithOctave,
           isScaleNote,
           sequenceNumber: isScaleNote ? (sequenceIndex + 1) : null,
           isRoot,
@@ -82,8 +97,12 @@ const Fretboard: React.FC = () => {
     return notes;
   }, [currentTuning, scaleNotes, selectedRoot]);
 
-  const handleNoteClick = (note: string, sequence: number | null) => {
-    console.log(`Clicked note: ${note}, Sequence: ${sequence}`);
+  const handleNoteClick = async (noteWithOctave: string) => {
+    if (!audioStarted.current) {
+      await Tone.start();
+      audioStarted.current = true;
+    }
+    synth.current?.triggerAttackRelease(noteWithOctave, "8n");
   };
 
   const markerSize = Math.min(fretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
@@ -181,7 +200,7 @@ const Fretboard: React.FC = () => {
                 className="flex items-center justify-center text-sm font-semibold text-gray-700 dark:text-gray-300"
                 style={{ height: `${STRING_HEIGHT_PX}px` }}
               >
-                {note}
+                {note.match(/[A-G]#?/)?.[0] || ''}
               </div>
             ))}
           </div>
@@ -252,7 +271,7 @@ const Fretboard: React.FC = () => {
                     isRoot={note.isRoot}
                     isHighlighted={note.isScaleNote}
                     size={markerSize}
-                    onClick={() => handleNoteClick(note.noteName, note.sequenceNumber)}
+                    onClick={() => handleNoteClick(note.noteWithOctave)}
                   />
                 </div>
               );
