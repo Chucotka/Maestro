@@ -5,7 +5,6 @@ import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useTheme } from 'next-themes';
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -27,8 +26,6 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, 
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
-  
-  const { theme, setTheme } = useTheme();
 
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
@@ -126,10 +123,6 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, 
         <div className="flex items-center space-x-2">
           <Switch id="show-note-names" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
           <Label htmlFor="show-note-names" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
-          <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">Dark Mode</Label>
         </div>
       </div>
 

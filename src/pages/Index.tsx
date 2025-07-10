@@ -9,12 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ALL_NOTES, SCALES } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
+import { useTheme } from "next-themes";
 
 const Index = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [selectedInstrument, setSelectedInstrument] = useState('guitar');
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
+  const { theme, setTheme } = useTheme();
   
   const synth = useRef<Tone.Synth | null>(null);
 
@@ -109,6 +112,11 @@ const Index = () => {
                 <PianoIcon className="h-5 w-5 mr-2" /> Piano
               </ToggleGroupItem>
             </ToggleGroup>
+            
+            <div className="flex items-center space-x-2">
+              <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
+              <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">Dark Mode</Label>
+            </div>
           </div>
         </div>
 
