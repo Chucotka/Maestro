@@ -17,8 +17,8 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
   return (
     <div
       className={cn(
-        "absolute flex items-center justify-center rounded-full text-xs font-bold cursor-pointer transition-all duration-100 ease-in-out",
-        "w-6 h-6 md:w-7 md:h-7", // Responsive sizing
+        "absolute flex items-center justify-center rounded-full font-bold cursor-pointer transition-all duration-100 ease-in-out",
+        "w-5 h-5 text-[10px] md:w-6 md:h-6 md:text-xs", // Smaller, more responsive sizing
         isHighlighted
           ? isRoot
             ? "bg-red-500 text-white shadow-lg scale-110"

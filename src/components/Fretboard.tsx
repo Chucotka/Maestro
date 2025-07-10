@@ -5,13 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from '@/lib/utils';
-import { useTheme } from 'next-themes'; // Import useTheme
+import { useTheme } from 'next-themes';
 
-const NUM_FRETS = 24; // 24 frets as per requirement
-const STRING_HEIGHT_PX = 40; // Visual spacing for strings
-const FRET_WIDTH_PX = 90; // Visual spacing for frets (approximate)
-const FRET_NUMBER_HEIGHT_PX = 30; // Space for fret numbers above the board
-const STRING_LABEL_WIDTH_PX = 40; // Space for string labels to the left
+const NUM_FRETS = 24;
+const STRING_HEIGHT_PX = 45; // Increased for more space
+const FRET_WIDTH_PX = 100;   // Increased for more space
+const FRET_NUMBER_HEIGHT_PX = 30;
+const STRING_LABEL_WIDTH_PX = 40;
 
 const FRET_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
 const FRET_DOT_FRETS_DOUBLE = [12, 24];
@@ -22,9 +22,9 @@ const Fretboard: React.FC = () => {
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
 
-  const { theme, setTheme } = useTheme(); // Use the useTheme hook
+  const { theme, setTheme } = useTheme();
 
-  const currentTuning = GUITAR_TUNINGS.STANDARD; // Using standard tuning for now
+  const currentTuning = GUITAR_TUNINGS.STANDARD;
 
   const scaleNotes = useMemo(() => {
     const intervals = SCALES[selectedScaleName];
@@ -62,12 +62,11 @@ const Fretboard: React.FC = () => {
   }, [currentTuning, scaleNotes, selectedRoot]);
 
   const handleNoteClick = (note: string, sequence: number | null) => {
-    // Optional: Implement interactive features like playing sound or showing detailed info
     console.log(`Clicked note: ${note}, Sequence: ${sequence}`);
   };
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 bg-gray-50 dark:bg-gray-900 rounded-lg shadow-xl overflow-hidden">
+    <div className="p-4 md:p-8 lg:p-12 bg-white dark:bg-gray-950 rounded-lg shadow-xl overflow-hidden">
       <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">Fret Maestro</h2>
 
       <div className="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center">
@@ -103,52 +102,35 @@ const Fretboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Toggles for display options */}
       <div className="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center">
         <div className="flex items-center space-x-2">
-          <Switch
-            id="show-all-notes"
-            checked={showAllNotes}
-            onCheckedChange={setShowAllNotes}
-          />
+          <Switch id="show-all-notes" checked={showAllNotes} onCheckedChange={setShowAllNotes} />
           <Label htmlFor="show-all-notes" className="text-gray-700 dark:text-gray-300">Show All Notes</Label>
         </div>
         <div className="flex items-center space-x-2">
-          <Switch
-            id="show-note-names"
-            checked={showNoteNames}
-            onCheckedChange={setShowNoteNames}
-          />
+          <Switch id="show-note-names" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
           <Label htmlFor="show-note-names" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
         </div>
-        {/* Dark Mode Toggle */}
         <div className="flex items-center space-x-2">
-          <Switch
-            id="dark-mode"
-            checked={theme === 'dark'}
-            onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-          />
+          <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
           <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">Dark Mode</Label>
         </div>
       </div>
 
       <div className="flex flex-col items-start">
-        {/* Fret Numbers Row */}
         <div className="flex w-full" style={{ paddingLeft: STRING_LABEL_WIDTH_PX }}>
           {Array.from({ length: NUM_FRETS + 1 }).map((_, i) => (
             <div
               key={`fret-num-${i}`}
-              className="flex-shrink-0 flex items-center justify-center text-sm font-semibold text-gray-600 dark:text-gray-400"
+              className="flex-shrink-0 flex items-center justify-center text-sm font-semibold text-gray-500 dark:text-gray-400"
               style={{ width: `${FRET_WIDTH_PX}px`, height: `${FRET_NUMBER_HEIGHT_PX}px` }}
             >
-              {i > 0 && i} {/* Don't show 0 for the nut */}
+              {i > 0 && i}
             </div>
           ))}
         </div>
 
-        {/* Main Fretboard Area (Strings + Frets + Markers) */}
         <div className="flex w-full overflow-x-auto pb-4">
-          {/* String Labels Column */}
           <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
             {currentTuning.map((note, i) => (
               <div
@@ -161,27 +143,24 @@ const Fretboard: React.FC = () => {
             ))}
           </div>
 
-          {/* Actual Fretboard Grid */}
           <div
-            className="relative border-t-2 border-l-2 border-gray-700 dark:border-gray-300 flex-grow"
+            className="relative border-l-2 border-gray-500 dark:border-gray-400 flex-grow bg-gray-200 dark:bg-gray-800 rounded-r-md"
             style={{
-              minWidth: `${NUM_FRETS * FRET_WIDTH_PX}px`, // Ensure it doesn't shrink below this
+              minWidth: `${NUM_FRETS * FRET_WIDTH_PX}px`,
               height: `${currentTuning.length * STRING_HEIGHT_PX}px`,
             }}
           >
-            {/* Fret lines */}
             {Array.from({ length: NUM_FRETS + 1 }).map((_, i) => (
               <div
                 key={`fret-line-${i}`}
                 className={cn(
-                  "absolute top-0 h-full bg-gray-700 dark:bg-gray-300",
-                  i === 0 ? 'w-2' : 'w-0.5' // Thicker line for the nut
+                  "absolute top-0 h-full bg-gray-400 dark:bg-gray-600",
+                  i === 0 ? 'w-2' : 'w-0.5'
                 )}
                 style={{ left: `${i * FRET_WIDTH_PX}px` }}
               />
             ))}
 
-            {/* String lines */}
             {currentTuning.map((_, i) => (
               <div
                 key={`string-line-${i}`}
@@ -190,42 +169,39 @@ const Fretboard: React.FC = () => {
               />
             ))}
 
-            {/* Fret Dot Markers (Single) */}
             {FRET_DOT_FRETS_SINGLE.map((fret) => (
               <div
                 key={`dot-single-${fret}`}
-                className="absolute rounded-full bg-gray-600 dark:bg-gray-400 w-3 h-3 md:w-4 md:h-4"
+                className="absolute rounded-full bg-gray-400 dark:bg-gray-500 w-3 h-3 md:w-4 md:h-4"
                 style={{
-                  left: `${fret * FRET_WIDTH_PX - FRET_WIDTH_PX / 2}px`, // Center in the fret
+                  left: `${fret * FRET_WIDTH_PX - FRET_WIDTH_PX / 2}px`,
                   top: `50%`,
                   transform: 'translate(-50%, -50%)',
                 }}
               />
             ))}
 
-            {/* Fret Dot Markers (Double) */}
             {FRET_DOT_FRETS_DOUBLE.map((fret) => (
               <React.Fragment key={`dot-double-${fret}`}>
                 <div
-                  className="absolute rounded-full bg-gray-600 dark:bg-gray-400 w-3 h-3 md:w-4 md:h-4"
+                  className="absolute rounded-full bg-gray-400 dark:bg-gray-500 w-3 h-3 md:w-4 md:h-4"
                   style={{
                     left: `${fret * FRET_WIDTH_PX - FRET_WIDTH_PX / 2}px`,
-                    top: `calc(50% - ${STRING_HEIGHT_PX / 2}px)`, // Above center
+                    top: `calc(50% - ${STRING_HEIGHT_PX * 1.5}px)`,
                     transform: 'translate(-50%, -50%)',
                   }}
                 />
                 <div
-                  className="absolute rounded-full bg-gray-600 dark:bg-gray-400 w-3 h-3 md:w-4 md:h-4"
+                  className="absolute rounded-full bg-gray-400 dark:bg-gray-500 w-3 h-3 md:w-4 md:h-4"
                   style={{
                     left: `${fret * FRET_WIDTH_PX - FRET_WIDTH_PX / 2}px`,
-                    top: `calc(50% + ${STRING_HEIGHT_PX / 2}px)`, // Below center
+                    top: `calc(50% + ${STRING_HEIGHT_PX * 1.5}px)`,
                     transform: 'translate(-50%, -50%)',
                   }}
                 />
               </React.Fragment>
             ))}
 
-            {/* Note Markers */}
             {fretboardNotes.map((note, index) => {
               const shouldRender = showAllNotes || note.isScaleNote;
               if (shouldRender) {
