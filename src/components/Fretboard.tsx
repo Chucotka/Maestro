@@ -195,30 +195,41 @@ const Fretboard: React.FC = () => {
             {/* 3. Note Markers */}
             {fretboardNotes.map((note, index) => {
               const shouldRender = showAllNotes || note.isScaleNote;
-              if (shouldRender && note.fretNumber > 0) {
-                const markerContent = showNoteNames
-                  ? note.noteName
-                  : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
+              if (!shouldRender) return null;
 
-                const leftPos = note.fretNumber * FRET_WIDTH_PX - FRET_WIDTH_PX / 2;
-                const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
+              const isFrettedNote = note.fretNumber > 0;
+              const leftPos = isFrettedNote
+                ? note.fretNumber * FRET_WIDTH_PX - FRET_WIDTH_PX / 2
+                : -20; // Position open string notes to the left of the nut
 
-                return (
-                  <div
-                    key={`note-${index}`}
-                    className="absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `${leftPos}px`, top: `${topPos}px` }}
-                  >
-                    <NoteMarker
-                      content={markerContent}
-                      isRoot={note.isRoot}
-                      isHighlighted={note.isScaleNote}
-                      onClick={() => handleNoteClick(note.noteName, note.sequenceNumber)}
-                    />
-                  </div>
-                );
+              const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
+
+              let markerContent: string | number = '';
+              if (isFrettedNote) {
+                markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
+              } else {
+                // Only show open string markers if they are part of the scale
+                if (note.isScaleNote) {
+                  markerContent = showNoteNames ? note.noteName : '●';
+                } else {
+                  return null; // Don't show non-scale open notes
+                }
               }
-              return null;
+
+              return (
+                <div
+                  key={`note-${index}`}
+                  className="absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${leftPos}px`, top: `${topPos}px`, zIndex: 10 }}
+                >
+                  <NoteMarker
+                    content={markerContent}
+                    isRoot={note.isRoot}
+                    isHighlighted={note.isScaleNote}
+                    onClick={() => handleNoteClick(note.noteName, note.sequenceNumber)}
+                  />
+                </div>
+              );
             })}
 
             {/* 4. String Lines (Rendered last to be on top) */}
@@ -226,7 +237,7 @@ const Fretboard: React.FC = () => {
               <div
                 key={`string-line-${i}`}
                 className="absolute left-0 w-full h-[1.5px] bg-gradient-to-r from-stone-600 to-stone-400 dark:from-stone-400 dark:to-stone-300"
-                style={{ top: `${i * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2}px`, transform: 'translateY(-50%)' }}
+                style={{ top: `${i * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2}px`, transform: 'translateY(-50%)', zIndex: 20 }}
               />
             ))}
           </div>
