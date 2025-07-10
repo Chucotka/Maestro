@@ -27,28 +27,41 @@ const Fretboard: React.FC = () => {
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
-  const synth = useRef<Tone.PluckSynth | null>(null);
+  // Using a simpler synth for debugging purposes
+  const synth = useRef<Tone.Synth | null>(null);
 
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    // Initialize the synth on component mount, but don't start the context yet.
-    synth.current = new Tone.PluckSynth().toDestination();
+    console.log("Fretboard component mounted. Initializing synth...");
+    // Use a basic synth to rule out issues with PluckSynth
+    synth.current = new Tone.Synth().toDestination();
+    console.log("Synth initialized:", synth.current);
     
     return () => {
+      console.log("Fretboard component unmounting. Disposing synth.");
       synth.current?.dispose();
     };
   }, []);
 
   const enableAudio = async () => {
-    await Tone.start();
-    setIsAudioEnabled(true);
+    console.log("'Enable Audio' button clicked.");
+    console.log("AudioContext state before start:", Tone.context.state);
+    try {
+      await Tone.start();
+      console.log("Tone.start() completed successfully.");
+      console.log("AudioContext state after start:", Tone.context.state);
+      setIsAudioEnabled(true);
+    } catch (e) {
+      console.error("Error starting Tone.js AudioContext:", e);
+      alert("Failed to start audio. See console for details.");
+    }
   };
 
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
 
   useLayoutEffect(() => {
-    if (!isAudioEnabled) return; // Don't calculate if not visible
+    if (!isAudioEnabled) return;
     const container = fretboardContainerRef.current;
     if (!container) return;
 
@@ -108,7 +121,13 @@ const Fretboard: React.FC = () => {
   }, [currentTuning, scaleNotes, selectedRoot]);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    synth.current?.triggerAttackRelease(noteWithOctave, "8n");
+    console.log(`Note clicked: ${noteWithOctave}`);
+    if (synth.current && Tone.context.state === 'running') {
+      console.log("Synth found and audio context is running. Triggering attack/release.");
+      synth.current.triggerAttackRelease(noteWithOctave, "8n");
+    } else {
+      console.error("Cannot play note. Synth available:", !!synth.current, "AudioContext state:", Tone.context.state);
+    }
   };
 
   const markerSize = Math.min(fretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
