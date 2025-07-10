@@ -13,7 +13,6 @@ const STRING_LABEL_WIDTH_PX = 40;
 
 const FRET_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
 const FRET_DOT_FRETS_DOUBLE = [12, 24];
-const FRET_NUMBERS_TO_SHOW = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 
 const Fretboard: React.FC = () => {
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
@@ -151,7 +150,7 @@ const Fretboard: React.FC = () => {
                 className="flex-shrink-0 flex items-center justify-center text-xs font-semibold text-gray-500 dark:text-gray-400"
                 style={{ width: `${fretWidth}px`, height: `${FRET_NUMBER_HEIGHT_PX}px` }}
               >
-                {FRET_NUMBERS_TO_SHOW.includes(fretNumber) ? fretNumber : ''}
+                {fretNumber}
               </div>
             );
           })}
