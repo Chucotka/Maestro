@@ -27,13 +27,14 @@ const Fretboard: React.FC = () => {
   const [fretWidth, setFretWidth] = useState(50);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
   
-  const synth = useRef<Tone.PluckSynth | null>(null);
+  // Using the simpler Tone.Synth which worked during diagnostics
+  const synth = useRef<Tone.Synth | null>(null);
 
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    // Initialize a guitar-like synth on component mount
-    synth.current = new Tone.PluckSynth().toDestination();
+    // Initialize a basic synth on component mount
+    synth.current = new Tone.Synth().toDestination();
     
     // Clean up the synth on component unmount
     return () => {
@@ -45,7 +46,11 @@ const Fretboard: React.FC = () => {
     try {
       await Tone.start();
       if (Tone.context.state === 'running') {
-        setIsAudioEnabled(true);
+        // This is the key fix: wait a moment for the audio context to stabilize
+        // before changing the state and re-rendering the component.
+        setTimeout(() => {
+          setIsAudioEnabled(true);
+        }, 100); // 100ms delay
       } else {
         console.error("Audio context failed to start.");
       }
