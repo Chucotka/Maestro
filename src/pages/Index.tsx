@@ -4,7 +4,7 @@ import Piano from "@/components/Piano";
 import { useState, useRef, useEffect } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
-import { Music, Guitar, Piano as PianoIcon } from "lucide-react";
+import { Music, Guitar, Piano as PianoIcon, Zap, Volume2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ALL_NOTES, SCALES } from "@/lib/fretboardUtils";
@@ -15,13 +15,16 @@ import { useTheme } from "next-themes";
 const Index = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [isSamplesLoading, setIsSamplesLoading] = useState(false);
-  const [selectedInstrument, setSelectedInstrument] = useState<'guitar' | 'piano'>('guitar');
+  const [selectedInstrument, setSelectedInstrument] = useState<'guitar' | 'piano' | 'clean' | 'distortion' | 'bass'>('guitar');
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const { theme, setTheme } = useTheme();
   
   const guitarSampler = useRef<Tone.Sampler | null>(null);
   const pianoSampler = useRef<Tone.Sampler | null>(null);
+  const cleanGuitarSampler = useRef<Tone.Sampler | null>(null);
+  const distortionGuitarSampler = useRef<Tone.Sampler | null>(null);
+  const bassSampler = useRef<Tone.Sampler | null>(null);
 
   const pianoUrls = {
     "A0": "A0.mp3", "C1": "C1.mp3", "Eb1": "Eb1.mp3", "Gb1": "Gb1.mp3",
@@ -41,10 +44,19 @@ const Index = () => {
     "A5": "A5.mp3", "C6": "C6.mp3"
   };
 
+  const bassUrls = {
+    "E1": "E1.mp3", "G1": "G1.mp3", "Bb1": "Bb1.mp3", "Db2": "Db2.mp3",
+    "E2": "E2.mp3", "G2": "G2.mp3", "Bb2": "Bb2.mp3", "Db3": "Db3.mp3",
+    "E3": "E3.mp3", "G3": "G3.mp3"
+  };
+
   useEffect(() => {
     return () => {
       guitarSampler.current?.dispose();
       pianoSampler.current?.dispose();
+      cleanGuitarSampler.current?.dispose();
+      distortionGuitarSampler.current?.dispose();
+      bassSampler.current?.dispose();
     };
   }, []);
 
@@ -69,7 +81,31 @@ const Index = () => {
         }).toDestination();
       });
 
-      await Promise.all([pianoLoaded, guitarLoaded]);
+      const cleanLoaded = new Promise<void>((resolve) => {
+        cleanGuitarSampler.current = new Tone.Sampler({
+          urls: guitarUrls,
+          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/",
+          onload: () => resolve(),
+        }).toDestination();
+      });
+
+      const distortionLoaded = new Promise<void>((resolve) => {
+        distortionGuitarSampler.current = new Tone.Sampler({
+          urls: guitarUrls,
+          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/distortion_guitar-mp3/",
+          onload: () => resolve(),
+        }).toDestination();
+      });
+
+      const bassLoaded = new Promise<void>((resolve) => {
+        bassSampler.current = new Tone.Sampler({
+          urls: bassUrls,
+          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_bass_finger-mp3/",
+          onload: () => resolve(),
+        }).toDestination();
+      });
+
+      await Promise.all([pianoLoaded, guitarLoaded, cleanLoaded, distortionLoaded, bassLoaded]);
 
       if (Tone.context.state === 'running') {
         setIsAudioEnabled(true);
@@ -146,14 +182,23 @@ const Index = () => {
             <ToggleGroup 
               type="single" 
               value={selectedInstrument} 
-              onValueChange={(value) => { if (value) setSelectedInstrument(value) }}
-              className="border border-gray-200 dark:border-gray-700 rounded-md"
+              onValueChange={(value) => { if (value) setSelectedInstrument(value as any) }}
+              className="border border-gray-200 dark:border-gray-700 rounded-md flex-wrap"
             >
-              <ToggleGroupItem value="guitar" aria-label="Select guitar">
-                <Guitar className="h-5 w-5 mr-2" /> Guitar
+              <ToggleGroupItem value="guitar" aria-label="Select acoustic guitar">
+                <Guitar className="h-4 w-4 mr-2" /> Acoustic
+              </ToggleGroupItem>
+              <ToggleGroupItem value="clean" aria-label="Select clean guitar">
+                <Volume2 className="h-4 w-4 mr-2" /> Clean
+              </ToggleGroupItem>
+              <ToggleGroupItem value="distortion" aria-label="Select distortion guitar">
+                <Zap className="h-4 w-4 mr-2" /> Distortion
+              </ToggleGroupItem>
+              <ToggleGroupItem value="bass" aria-label="Select bass">
+                <Music className="h-4 w-4 mr-2" /> Bass
               </ToggleGroupItem>
               <ToggleGroupItem value="piano" aria-label="Select piano">
-                <PianoIcon className="h-5 w-5 mr-2" /> Piano
+                <PianoIcon className="h-4 w-4 mr-2" /> Piano
               </ToggleGroupItem>
             </ToggleGroup>
             
@@ -164,17 +209,23 @@ const Index = () => {
           </div>
         </div>
 
-        {selectedInstrument === 'guitar' ? (
-          <Fretboard 
-            selectedRoot={selectedRoot}
-            selectedScaleName={selectedScaleName}
-            sampler={guitarSampler}
-          />
-        ) : (
-          <Piano 
+        {selectedInstrument === 'piano' ? (
+          <Piano
             selectedRoot={selectedRoot}
             selectedScaleName={selectedScaleName}
             sampler={pianoSampler}
+          />
+        ) : (
+          <Fretboard
+            selectedRoot={selectedRoot}
+            selectedScaleName={selectedScaleName}
+            instrumentType={selectedInstrument as any}
+            sampler={
+              selectedInstrument === 'guitar' ? guitarSampler :
+              selectedInstrument === 'clean' ? cleanGuitarSampler :
+              selectedInstrument === 'distortion' ? distortionGuitarSampler :
+              bassSampler
+            }
           />
         )}
       </div>

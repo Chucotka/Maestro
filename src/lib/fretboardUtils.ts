@@ -12,6 +12,8 @@ export const GUITAR_TUNINGS = {
   "Open C":         ["C2", "G2", "C3", "G3", "C4", "E4"],
   "Open E":         ["E2", "B2", "E3", "G#3", "B3", "E4"],
   "DADGAD":         ["D2", "A2", "D3", "G3", "A3", "D4"],
+  "Bass (Standard)": ["E1", "A1", "D2", "G2"],
+  "Bass (5-String)": ["B0", "E1", "A1", "D2", "G2"],
 };
 
 export const SCALES = {

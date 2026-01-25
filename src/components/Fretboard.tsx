@@ -18,10 +18,18 @@ interface FretboardProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
   sampler: React.MutableRefObject<Tone.Sampler | null>;
+  instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, sampler }) => {
-  const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
+const Fretboard: React.FC<FretboardProps> = ({
+  selectedRoot,
+  selectedScaleName,
+  sampler,
+  instrumentType
+}) => {
+  const [selectedTuningName, setSelectedTuningName] = useState<string>(
+    instrumentType === 'bass' ? "Bass (Standard)" : "Standard"
+  );
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretDimensions, setFretDimensions] = useState({ fretWidth: 60, markerSize: 28 });
@@ -34,6 +42,10 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, 
     const intervals = SCALES[selectedScaleName];
     return getScaleNotes(selectedRoot, intervals);
   }, [selectedRoot, selectedScaleName]);
+
+  useLayoutEffect(() => {
+    setSelectedTuningName(instrumentType === 'bass' ? "Bass (Standard)" : "Standard");
+  }, [instrumentType]);
 
   useLayoutEffect(() => {
     const container = fretboardContainerRef.current;
