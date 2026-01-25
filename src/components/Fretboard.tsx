@@ -5,6 +5,7 @@ import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -17,7 +18,7 @@ const FRET_DOT_FRETS_DOUBLE = [12, 24];
 interface FretboardProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
-  sampler: React.MutableRefObject<Tone.Sampler | null>;
+  sampler: Tone.Sampler | null;
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
 }
 
@@ -51,20 +52,20 @@ const Fretboard: React.FC<FretboardProps> = ({
     const container = fretboardContainerRef.current;
     if (!container) return;
 
-    const observer = new ResizeObserver(entries => {
-      if (entries[0]) {
-        const { width } = entries[0].contentRect;
-        if (width > 0) {
-          const newFretWidth = width / NUM_FRETS;
-          const newMarkerSize = Math.min(newFretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
-          setFretDimensions({
-            fretWidth: newFretWidth,
-            markerSize: newMarkerSize,
-          });
-        }
+    const updateDimensions = () => {
+      const width = container.offsetWidth;
+      if (width > 0) {
+        const newFretWidth = width / NUM_FRETS;
+        const newMarkerSize = Math.min(newFretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
+        setFretDimensions({
+          fretWidth: newFretWidth,
+          markerSize: newMarkerSize,
+        });
       }
-    });
+    };
 
+    updateDimensions();
+    const observer = new ResizeObserver(updateDimensions);
     observer.observe(container);
     return () => observer.disconnect();
   }, []);
@@ -104,13 +105,13 @@ const Fretboard: React.FC<FretboardProps> = ({
   }, [displayTuning, scaleNotes, selectedRoot]);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    if (sampler.current && Tone.context.state === 'running') {
-      sampler.current.triggerAttackRelease(noteWithOctave, "2n");
+    if (sampler && Tone.context.state === 'running') {
+      sampler.triggerAttackRelease(noteWithOctave, "2n");
     }
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
+    <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300 overflow-hidden">
       <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-8 justify-center items-center">
         <div className="flex items-center gap-2">
           <Label htmlFor="tuning-select" className="text-gray-700 dark:text-gray-300">Tuning:</Label>
@@ -122,7 +123,9 @@ const Fretboard: React.FC<FretboardProps> = ({
               <SelectValue placeholder="Select Tuning" />
             </SelectTrigger>
             <SelectContent>
-              {Object.keys(GUITAR_TUNINGS).map((tuning) => (
+              {Object.keys(GUITAR_TUNINGS)
+                .filter(t => instrumentType === 'bass' ? t.includes("Bass") : !t.includes("Bass"))
+                .map((tuning) => (
                 <SelectItem key={tuning} value={tuning}>{tuning}</SelectItem>
               ))}
             </SelectContent>
@@ -138,7 +141,8 @@ const Fretboard: React.FC<FretboardProps> = ({
         </div>
       </div>
 
-      <div className="w-full">
+      <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+        <div className="min-w-[1000px] p-4">
         <div className="flex w-full" style={{ paddingLeft: STRING_LABEL_WIDTH_PX }}>
           {Array.from({ length: NUM_FRETS }).map((_, i) => {
             const fretNumber = i + 1;
@@ -277,7 +281,9 @@ const Fretboard: React.FC<FretboardProps> = ({
             ))}
           </div>
         </div>
-      </div>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
       <div className="mt-8 text-center">
         <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Current Scale Notes:</h3>

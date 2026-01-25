@@ -4,27 +4,29 @@ import Piano from "@/components/Piano";
 import { useState, useRef, useEffect } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
-import { Music, Guitar, Piano as PianoIcon, Zap, Volume2 } from "lucide-react";
+import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ALL_NOTES, SCALES } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
+import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
+
+type InstrumentType = 'guitar' | 'piano' | 'clean' | 'distortion' | 'bass';
 
 const Index = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-  const [isSamplesLoading, setIsSamplesLoading] = useState(false);
-  const [selectedInstrument, setSelectedInstrument] = useState<'guitar' | 'piano' | 'clean' | 'distortion' | 'bass'>('guitar');
+  const [loadingInstruments, setLoadingInstruments] = useState<Set<InstrumentType>>(new Set());
+  const [loadedInstruments, setLoadedInstruments] = useState<Set<InstrumentType>>(new Set());
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>('guitar');
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
+  const [volume, setVolume] = useState(0.8);
   const { theme, setTheme } = useTheme();
   
-  const guitarSampler = useRef<Tone.Sampler | null>(null);
-  const pianoSampler = useRef<Tone.Sampler | null>(null);
-  const cleanGuitarSampler = useRef<Tone.Sampler | null>(null);
-  const distortionGuitarSampler = useRef<Tone.Sampler | null>(null);
-  const bassSampler = useRef<Tone.Sampler | null>(null);
+  const samplers = useRef<Partial<Record<InstrumentType, Tone.Sampler>>>({});
 
   const pianoUrls = {
     "A0": "A0.mp3", "C1": "C1.mp3", "Eb1": "Eb1.mp3", "Gb1": "Gb1.mp3",
@@ -52,88 +54,94 @@ const Index = () => {
 
   useEffect(() => {
     return () => {
-      guitarSampler.current?.dispose();
-      pianoSampler.current?.dispose();
-      cleanGuitarSampler.current?.dispose();
-      distortionGuitarSampler.current?.dispose();
-      bassSampler.current?.dispose();
+      Object.values(samplers.current).forEach(s => s?.dispose());
     };
   }, []);
 
-  const enableAudio = async () => {
+  useEffect(() => {
+    Tone.Destination.volume.value = Tone.gainToDb(volume);
+  }, [volume]);
+
+  const loadInstrument = async (inst: InstrumentType) => {
+    if (loadedInstruments.has(inst) || loadingInstruments.has(inst)) return;
+
+    setLoadingInstruments(prev => new Set(prev).add(inst));
+
     try {
-      setIsSamplesLoading(true);
-      await Tone.start();
+      let urls: any = inst === 'piano' ? pianoUrls : inst === 'bass' ? bassUrls : guitarUrls;
+      let baseUrl = "";
 
-      const pianoLoaded = new Promise<void>((resolve) => {
-        pianoSampler.current = new Tone.Sampler({
-          urls: pianoUrls,
-          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_grand_piano-mp3/",
-          onload: () => resolve(),
-        }).toDestination();
-      });
-
-      const guitarLoaded = new Promise<void>((resolve) => {
-        guitarSampler.current = new Tone.Sampler({
-          urls: guitarUrls,
-          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/",
-          onload: () => resolve(),
-        }).toDestination();
-      });
-
-      const cleanLoaded = new Promise<void>((resolve) => {
-        cleanGuitarSampler.current = new Tone.Sampler({
-          urls: guitarUrls,
-          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/",
-          onload: () => resolve(),
-        }).toDestination();
-      });
-
-      const distortionLoaded = new Promise<void>((resolve) => {
-        distortionGuitarSampler.current = new Tone.Sampler({
-          urls: guitarUrls,
-          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/distortion_guitar-mp3/",
-          onload: () => resolve(),
-        }).toDestination();
-      });
-
-      const bassLoaded = new Promise<void>((resolve) => {
-        bassSampler.current = new Tone.Sampler({
-          urls: bassUrls,
-          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_bass_finger-mp3/",
-          onload: () => resolve(),
-        }).toDestination();
-      });
-
-      await Promise.all([pianoLoaded, guitarLoaded, cleanLoaded, distortionLoaded, bassLoaded]);
-
-      if (Tone.context.state === 'running') {
-        setIsAudioEnabled(true);
-      } else {
-        console.error("Audio context failed to start.");
+      switch(inst) {
+        case 'piano': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_grand_piano-mp3/"; break;
+        case 'guitar': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/"; break;
+        case 'clean': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/"; break;
+        case 'distortion': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/distortion_guitar-mp3/"; break;
+        case 'bass': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_bass_finger-mp3/"; break;
       }
+
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Timeout loading samples")), 30000);
+        samplers.current[inst] = new Tone.Sampler({
+          urls,
+          baseUrl,
+          onload: () => {
+            clearTimeout(timeout);
+            resolve();
+          },
+          onerror: (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          }
+        }).toDestination();
+      });
+
+      setLoadedInstruments(prev => new Set(prev).add(inst));
     } catch (e) {
-      console.error("Error starting audio context:", e);
+      console.error(`Error loading instrument ${inst}:`, e);
+      toast.error(`Failed to load ${inst} samples. Please check your connection.`);
     } finally {
-      setIsSamplesLoading(false);
+      setLoadingInstruments(prev => {
+        const next = new Set(prev);
+        next.delete(inst);
+        return next;
+      });
     }
   };
+
+  const enableAudio = async () => {
+    try {
+      await Tone.start();
+      await loadInstrument(selectedInstrument);
+      setIsAudioEnabled(true);
+    } catch (e) {
+      console.error("Error starting audio context:", e);
+      toast.error("Could not start audio. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    if (isAudioEnabled) {
+      loadInstrument(selectedInstrument);
+    }
+  }, [selectedInstrument, isAudioEnabled]);
+
+  const isSelectedLoading = loadingInstruments.has(selectedInstrument);
 
   if (!isAudioEnabled) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-stone-100 dark:bg-slate-900 p-4">
         <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full max-w-md">
           <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">
-            {isSamplesLoading ? "Loading High-Quality Sounds..." : "Audio Disabled"}
+            {loadingInstruments.size > 0 ? "Loading High-Quality Sounds..." : "Audio Disabled"}
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">
-            {isSamplesLoading
+            {loadingInstruments.size > 0
               ? "Please wait while we load realistic instrument samples. This may take a few seconds."
               : "Click the button to enable high-quality realistic audio for the interactive tools."}
           </p>
-          <Button onClick={enableAudio} size="lg" disabled={isSamplesLoading}>
-            <Music className="mr-2 h-5 w-5" />
-            {isSamplesLoading ? "Loading..." : "Enable Realistic Audio"}
+          <Button onClick={enableAudio} size="lg" disabled={loadingInstruments.size > 0}>
+            {loadingInstruments.size > 0 ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Music className="mr-2 h-5 w-5" />}
+            {loadingInstruments.size > 0 ? "Loading..." : "Enable Realistic Audio"}
           </Button>
         </div>
         <MadeWithDyad />
@@ -182,7 +190,7 @@ const Index = () => {
             <ToggleGroup 
               type="single" 
               value={selectedInstrument} 
-              onValueChange={(value) => { if (value) setSelectedInstrument(value as any) }}
+              onValueChange={(value) => { if (value) setSelectedInstrument(value as InstrumentType) }}
               className="border border-gray-200 dark:border-gray-700 rounded-md flex-wrap"
             >
               <ToggleGroupItem value="guitar" aria-label="Select acoustic guitar">
@@ -203,31 +211,46 @@ const Index = () => {
             </ToggleGroup>
             
             <div className="flex items-center space-x-2">
+              {volume === 0 ? <VolumeX className="h-5 w-5 text-gray-500" /> : volume < 0.5 ? <Volume1 className="h-5 w-5 text-gray-500" /> : <Volume2 className="h-5 w-5 text-gray-500" />}
+              <Slider
+                value={[volume * 100]}
+                max={100}
+                step={1}
+                className="w-24 md:w-32"
+                onValueChange={(vals) => setVolume(vals[0] / 100)}
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
               <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
-              <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">Dark Mode</Label>
+              <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">Dark</Label>
             </div>
           </div>
         </div>
 
-        {selectedInstrument === 'piano' ? (
-          <Piano
-            selectedRoot={selectedRoot}
-            selectedScaleName={selectedScaleName}
-            sampler={pianoSampler}
-          />
-        ) : (
-          <Fretboard
-            selectedRoot={selectedRoot}
-            selectedScaleName={selectedScaleName}
-            instrumentType={selectedInstrument as any}
-            sampler={
-              selectedInstrument === 'guitar' ? guitarSampler :
-              selectedInstrument === 'clean' ? cleanGuitarSampler :
-              selectedInstrument === 'distortion' ? distortionGuitarSampler :
-              bassSampler
-            }
-          />
-        )}
+        <div className="relative w-full">
+          {isSelectedLoading && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
+              <Loader2 className="h-10 w-10 animate-spin text-sky-500 mb-2" />
+              <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">Loading Instrument...</p>
+            </div>
+          )}
+
+          {selectedInstrument === 'piano' ? (
+            <Piano
+              selectedRoot={selectedRoot}
+              selectedScaleName={selectedScaleName}
+              sampler={samplers.current.piano || null}
+            />
+          ) : (
+            <Fretboard
+              selectedRoot={selectedRoot}
+              selectedScaleName={selectedScaleName}
+              instrumentType={selectedInstrument}
+              sampler={samplers.current[selectedInstrument] || null}
+            />
+          )}
+        </div>
       </div>
       <MadeWithDyad />
     </div>

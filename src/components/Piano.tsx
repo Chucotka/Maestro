@@ -4,11 +4,12 @@ import { getScaleNotes, SCALES } from '@/lib/fretboardUtils';
 import { cn } from '@/lib/utils';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface PianoProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
-  sampler: React.MutableRefObject<Tone.Sampler | null>;
+  sampler: Tone.Sampler | null;
 }
 
 interface PianoKey {
@@ -37,6 +38,7 @@ const blackKeys = ALL_PIANO_KEYS.filter(k => k.isBlack);
 
 const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler }) => {
   const [showNoteNames, setShowNoteNames] = useState(false);
+  const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
   const [keyDimensions, setKeyDimensions] = useState({ whiteKeyWidth: 20, blackKeyWidth: 12 });
   const pianoContainerRef = useRef<HTMLDivElement>(null);
 
@@ -46,23 +48,31 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
     const container = pianoContainerRef.current;
     if (!container) return;
 
-    const observer = new ResizeObserver(entries => {
-      if (entries[0]) {
-        const containerWidth = entries[0].contentRect.width;
-        if (containerWidth > 0) {
-          const whiteKeyWidth = containerWidth / whiteKeys.length;
-          setKeyDimensions({ whiteKeyWidth, blackKeyWidth: whiteKeyWidth * 0.6 });
-        }
+    const updateDimensions = () => {
+      const containerWidth = container.offsetWidth;
+      if (containerWidth > 0) {
+        const whiteKeyWidth = containerWidth / whiteKeys.length;
+        setKeyDimensions({ whiteKeyWidth, blackKeyWidth: whiteKeyWidth * 0.6 });
       }
-    });
+    };
 
+    updateDimensions();
+    const observer = new ResizeObserver(updateDimensions);
     observer.observe(container);
     return () => observer.disconnect();
   }, []);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    if (sampler.current && Tone.context.state === 'running') {
-      sampler.current.triggerAttackRelease(noteWithOctave, "2n");
+    if (sampler && Tone.context.state === 'running') {
+      setActiveNotes(prev => new Set(prev).add(noteWithOctave));
+      setTimeout(() => {
+        setActiveNotes(prev => {
+          const next = new Set(prev);
+          next.delete(noteWithOctave);
+          return next;
+        });
+      }, 200);
+      sampler.triggerAttackRelease(noteWithOctave, "2n");
     }
   };
 
@@ -75,11 +85,12 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
         </div>
       </div>
 
-      <div className="w-full h-40 md:h-56 border-2 border-slate-300 dark:border-slate-700 rounded-lg bg-slate-200 dark:bg-slate-900 p-1">
+      <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+        <div className="min-w-[800px] h-48 md:h-64 p-2 bg-slate-200 dark:bg-slate-900">
         <div ref={pianoContainerRef} className="relative w-full h-full">
           {keyDimensions.whiteKeyWidth > 0 && (
-            <>
-              <div className="flex w-full h-full">
+            <div className="relative w-full h-full">
+              <div className="flex w-full h-full absolute top-0 left-0">
                 {whiteKeys.map(key => {
                   const isHighlighted = scaleNotes.includes(key.note);
                   const isRoot = isHighlighted && key.note === selectedRoot;
@@ -89,7 +100,8 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
                       onClick={() => handleNoteClick(key.noteWithOctave)}
                       className={cn(
                         'flex-shrink-0 flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 bg-white hover:bg-slate-100',
-                        isHighlighted && { 'border-2': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-100 dark:bg-red-900/50': isRoot, 'bg-sky-100 dark:bg-sky-900/50': !isRoot }
+                        activeNotes.has(key.noteWithOctave) && 'bg-yellow-200 dark:bg-yellow-900/80 scale-y-[0.98] z-20',
+                        isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-100 dark:bg-red-900/50': isRoot, 'bg-sky-100 dark:bg-sky-900/50': !isRoot }
                       )}
                       style={{ width: `${keyDimensions.whiteKeyWidth}px` }}
                     >
@@ -100,18 +112,27 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
                   );
                 })}
               </div>
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
               {blackKeys.map(key => {
                 const isHighlighted = scaleNotes.includes(key.note);
                 const isRoot = isHighlighted && key.note === selectedRoot;
-                const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.octave > key.octave || (wk.octave === key.octave && wk.note > key.note)) -1;
+
+                const precedingWhiteNote = key.note === 'C#' ? 'C' :
+                                           key.note === 'D#' ? 'D' :
+                                           key.note === 'F#' ? 'F' :
+                                           key.note === 'G#' ? 'G' :
+                                           key.note === 'A#' ? 'A' : '';
+
+                const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.note === precedingWhiteNote && wk.octave === key.octave);
 
                 return (
                   <button
                     key={key.noteWithOctave}
                     onClick={() => handleNoteClick(key.noteWithOctave)}
                     className={cn(
-                      'absolute flex items-start justify-center pt-1 border-slate-400 rounded-b-sm transition-all duration-100 z-10 bg-slate-800 hover:bg-slate-700 border-2',
-                      isHighlighted && { 'border-4': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-800': isRoot, 'bg-sky-800': !isRoot }
+                      'absolute flex items-start justify-center pt-1 border-slate-400 rounded-b-sm transition-all duration-100 z-10 bg-slate-800 hover:bg-slate-700 border-2 pointer-events-auto',
+                      activeNotes.has(key.noteWithOctave) && 'bg-yellow-500 scale-y-[0.95] z-30',
+                      isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-4': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-800': isRoot, 'bg-sky-800': !isRoot }
                     )}
                     style={{
                       width: `${keyDimensions.blackKeyWidth}px`,
@@ -126,10 +147,13 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
                   </button>
                 );
               })}
-            </>
+              </div>
+            </div>
           )}
         </div>
-      </div>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
       <div className="mt-8 text-center">
         <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Current Scale Notes:</h3>
