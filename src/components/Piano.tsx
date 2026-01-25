@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 interface PianoProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
-  synth: React.MutableRefObject<Tone.Synth | null>;
+  sampler: React.MutableRefObject<Tone.Sampler | null>;
 }
 
 interface PianoKey {
@@ -35,7 +35,7 @@ const ALL_PIANO_KEYS: PianoKey[] = (() => {
 const whiteKeys = ALL_PIANO_KEYS.filter(k => !k.isBlack);
 const blackKeys = ALL_PIANO_KEYS.filter(k => k.isBlack);
 
-const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth }) => {
+const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler }) => {
   const [showNoteNames, setShowNoteNames] = useState(false);
   const [keyDimensions, setKeyDimensions] = useState({ whiteKeyWidth: 20, blackKeyWidth: 12 });
   const pianoContainerRef = useRef<HTMLDivElement>(null);
@@ -61,8 +61,8 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth })
   }, []);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    if (synth.current && Tone.context.state === 'running') {
-      synth.current.triggerAttackRelease(noteWithOctave, "8n");
+    if (sampler.current && Tone.context.state === 'running') {
+      sampler.current.triggerAttackRelease(noteWithOctave, "2n");
     }
   };
 

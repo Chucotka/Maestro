@@ -17,10 +17,10 @@ const FRET_DOT_FRETS_DOUBLE = [12, 24];
 interface FretboardProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
-  synth: React.MutableRefObject<Tone.Synth | null>;
+  sampler: React.MutableRefObject<Tone.Sampler | null>;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, synth }) => {
+const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, sampler }) => {
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
@@ -92,8 +92,8 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, 
   }, [displayTuning, scaleNotes, selectedRoot]);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    if (synth.current && Tone.context.state === 'running') {
-      synth.current.triggerAttackRelease(noteWithOctave, "8n");
+    if (sampler.current && Tone.context.state === 'running') {
+      sampler.current.triggerAttackRelease(noteWithOctave, "2n");
     }
   };
 

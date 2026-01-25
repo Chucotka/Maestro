@@ -14,32 +14,72 @@ import { useTheme } from "next-themes";
 
 const Index = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-  const [selectedInstrument, setSelectedInstrument] = useState('guitar');
+  const [isSamplesLoading, setIsSamplesLoading] = useState(false);
+  const [selectedInstrument, setSelectedInstrument] = useState<'guitar' | 'piano'>('guitar');
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const { theme, setTheme } = useTheme();
   
-  const synth = useRef<Tone.Synth | null>(null);
+  const guitarSampler = useRef<Tone.Sampler | null>(null);
+  const pianoSampler = useRef<Tone.Sampler | null>(null);
+
+  const pianoUrls = {
+    "A0": "A0.mp3", "C1": "C1.mp3", "Eb1": "Eb1.mp3", "Gb1": "Gb1.mp3",
+    "A1": "A1.mp3", "C2": "C2.mp3", "Eb2": "Eb2.mp3", "Gb2": "Gb2.mp3",
+    "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
+    "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
+    "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
+    "A5": "A5.mp3", "C6": "C6.mp3", "Eb6": "Eb6.mp3", "Gb6": "Gb6.mp3",
+    "A6": "A6.mp3", "C7": "C7.mp3", "Eb7": "Eb7.mp3", "Gb7": "Gb7.mp3",
+    "A7": "A7.mp3", "C8": "C8.mp3"
+  };
+
+  const guitarUrls = {
+    "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
+    "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
+    "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
+    "A5": "A5.mp3", "C6": "C6.mp3"
+  };
 
   useEffect(() => {
-    synth.current = new Tone.Synth().toDestination();
     return () => {
-      synth.current?.dispose();
+      guitarSampler.current?.dispose();
+      pianoSampler.current?.dispose();
     };
   }, []);
 
   const enableAudio = async () => {
     try {
+      setIsSamplesLoading(true);
       await Tone.start();
+
+      const pianoLoaded = new Promise<void>((resolve) => {
+        pianoSampler.current = new Tone.Sampler({
+          urls: pianoUrls,
+          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_grand_piano-mp3/",
+          onload: () => resolve(),
+        }).toDestination();
+      });
+
+      const guitarLoaded = new Promise<void>((resolve) => {
+        guitarSampler.current = new Tone.Sampler({
+          urls: guitarUrls,
+          baseUrl: "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/",
+          onload: () => resolve(),
+        }).toDestination();
+      });
+
+      await Promise.all([pianoLoaded, guitarLoaded]);
+
       if (Tone.context.state === 'running') {
-        setTimeout(() => {
-          setIsAudioEnabled(true);
-        }, 100);
+        setIsAudioEnabled(true);
       } else {
         console.error("Audio context failed to start.");
       }
     } catch (e) {
       console.error("Error starting audio context:", e);
+    } finally {
+      setIsSamplesLoading(false);
     }
   };
 
@@ -47,13 +87,17 @@ const Index = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-stone-100 dark:bg-slate-900 p-4">
         <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full max-w-md">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Аудио отключено</h2>
+          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+            {isSamplesLoading ? "Loading High-Quality Sounds..." : "Audio Disabled"}
+          </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">
-            Нажмите кнопку, чтобы включить звук для интерактивного инструмента.
+            {isSamplesLoading
+              ? "Please wait while we load realistic instrument samples. This may take a few seconds."
+              : "Click the button to enable high-quality realistic audio for the interactive tools."}
           </p>
-          <Button onClick={enableAudio} size="lg">
+          <Button onClick={enableAudio} size="lg" disabled={isSamplesLoading}>
             <Music className="mr-2 h-5 w-5" />
-            Включить звук
+            {isSamplesLoading ? "Loading..." : "Enable Realistic Audio"}
           </Button>
         </div>
         <MadeWithDyad />
@@ -124,13 +168,13 @@ const Index = () => {
           <Fretboard 
             selectedRoot={selectedRoot}
             selectedScaleName={selectedScaleName}
-            synth={synth}
+            sampler={guitarSampler}
           />
         ) : (
           <Piano 
             selectedRoot={selectedRoot}
             selectedScaleName={selectedScaleName}
-            synth={synth}
+            sampler={pianoSampler}
           />
         )}
       </div>
