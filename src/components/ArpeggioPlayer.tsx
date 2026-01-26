@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Square, FastForward, Rewind } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { useI18n } from '@/lib/i18n';
+import { ALL_NOTES } from '@/lib/fretboardUtils';
 
 interface ArpeggioPlayerProps {
   notes: string[]; // Note names like ["C", "E", "G"]
@@ -33,10 +34,17 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler }) => {
     await Tone.start();
     setIsPlaying(true);
 
-    // Create actual notes with octaves for playback
-    const playNotes = notes.map((n, i) => {
-      // Very simple octave assignment
-      return `${n}4`;
+    // Create actual notes with octaves for playback, ensuring they go up
+    let currentOctave = 4;
+    let lastNoteIndex = -1;
+
+    const playNotes = notes.map((n) => {
+      const noteIndex = ALL_NOTES.indexOf(n);
+      if (noteIndex !== -1 && noteIndex < lastNoteIndex) {
+        currentOctave++;
+      }
+      lastNoteIndex = noteIndex;
+      return `${n}${currentOctave}`;
     });
 
     let sequence = [...playNotes];
