@@ -161,9 +161,19 @@ const Fretboard: React.FC<FretboardProps> = ({
     <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300 overflow-hidden">
       <ScrollArea className="w-full whitespace-nowrap border-none">
         <div className="min-w-[1000px] p-4">
-        <div className="flex w-full" style={{ paddingLeft: STRING_LABEL_WIDTH_PX * 2 }}>
-          {[0, ...Array.from({ length: NUM_FRETS })].map((_, i) => {
-            const fretNumber = i;
+        <div className="flex w-full">
+          {/* Spacer for first label column */}
+          <div className="flex-shrink-0" style={{ width: `${STRING_LABEL_WIDTH_PX}px`, height: isLandscape ? '24px' : `${FRET_NUMBER_HEIGHT_PX}px` }} />
+          {/* Fret 0 (Open) number */}
+          <div
+            className="flex-shrink-0 flex items-center justify-center text-sm font-bold text-gray-400"
+            style={{ width: `${STRING_LABEL_WIDTH_PX}px`, height: isLandscape ? '24px' : `${FRET_NUMBER_HEIGHT_PX}px` }}
+          >
+            0
+          </div>
+          {/* Fret numbers 1-24 */}
+          {Array.from({ length: NUM_FRETS }).map((_, i) => {
+            const fretNumber = i + 1;
             return (
               <div
                 key={`fret-num-${fretNumber}`}
@@ -177,6 +187,7 @@ const Fretboard: React.FC<FretboardProps> = ({
         </div>
 
         <div className="flex w-full">
+          {/* String labels column 1 (Fixed names) */}
           <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
             {displayTuning.map((note, i) => (
               <div
@@ -189,16 +200,35 @@ const Fretboard: React.FC<FretboardProps> = ({
             ))}
           </div>
 
-          <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
-            {displayTuning.map((note, i) => (
-              <div
-                key={`string-label-left-${i}`}
-                className="flex items-center justify-center text-xs font-bold text-gray-400"
-                style={{ height: `${stringHeight}px` }}
-              >
-                {note.match(/[A-G]#?/)?.[0] || ''}
-              </div>
-            ))}
+          {/* String labels column 2 / Open Notes area */}
+          <div className="relative flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
+            {displayTuning.map((note, i) => {
+              const openNote = fretboardNotes.find(fn => fn.stringIndex === i && fn.fretNumber === 0);
+              const shouldRender = openNote && (showAllNotes || openNote.isScaleNote);
+              const markerContent = openNote ? (showNoteNames ? openNote.noteName : (openNote.isScaleNote ? openNote.sequenceNumber! : openNote.noteName)) : '';
+
+              return (
+                <div
+                  key={`string-label-left-${i}`}
+                  className="relative flex items-center justify-center text-xs font-bold text-gray-400"
+                  style={{ height: `${stringHeight}px` }}
+                >
+                  {shouldRender ? (
+                    <div className="z-30">
+                      <NoteMarker
+                        content={markerContent}
+                        isRoot={openNote.isRoot}
+                        isHighlighted={openNote.isScaleNote}
+                        size={fretDimensions.markerSize * 0.85}
+                        onClick={() => handleNoteClick(openNote.noteWithOctave)}
+                      />
+                    </div>
+                  ) : (
+                    <span className="opacity-30">{note.match(/[A-G]#?/)?.[0] || ''}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <div
@@ -207,8 +237,8 @@ const Fretboard: React.FC<FretboardProps> = ({
             style={{ 
               flex: 1,
               height: `${displayTuning.length * stringHeight}px`,
-              backgroundImage: 'linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)',
-              backgroundSize: '100% 1px, 40px 100%'
+              backgroundImage: `linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)`,
+              backgroundSize: `100% ${stringHeight}px, ${fretDimensions.fretWidth}px 100%`
             }}
           >
             {/* Wood Grain simulation */}
@@ -256,31 +286,7 @@ const Fretboard: React.FC<FretboardProps> = ({
               </React.Fragment>
             ))}
 
-            {fretboardNotes
-              .filter((note) => note.fretNumber === 0)
-              .map((note, index) => {
-                const shouldRender = showAllNotes || note.isScaleNote;
-                if (!shouldRender) return null;
-
-                const topPos = note.stringIndex * stringHeight + stringHeight / 2;
-                const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
-
-                return (
-                  <div
-                    key={`note-open-${index}`}
-                    className="absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `-4px`, top: `${topPos}px`, zIndex: 10 }}
-                  >
-                    <NoteMarker
-                      content={markerContent}
-                      isRoot={note.isRoot}
-                      isHighlighted={note.isScaleNote}
-                      size={fretDimensions.markerSize * 0.85}
-                      onClick={() => handleNoteClick(note.noteWithOctave)}
-                    />
-                  </div>
-                );
-              })}
+            {/* Open notes are now rendered in the label column 2 */}
 
             {fretboardNotes
               .filter((note) => note.fretNumber > 0)
