@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 import * as Tone from 'tone';
-import { getNoteAtFret, getScaleNotes, GUITAR_TUNINGS, SCALES } from '@/lib/fretboardUtils';
+import { getNoteAtFret, getScaleNotes, GUITAR_TUNINGS, BASS_TUNINGS, SCALES } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { InstrumentKey } from '@/lib/audioUtils';
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -17,17 +18,33 @@ const FRET_DOT_FRETS_DOUBLE = [12, 24];
 interface FretboardProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
-  synth: React.MutableRefObject<Tone.Synth | null>;
+  instrument: React.MutableRefObject<Tone.Sampler | Tone.Synth | null>;
+  isLoaded?: boolean;
+  instrumentKey?: InstrumentKey;
 }
 
-const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, synth }) => {
+const Fretboard: React.FC<FretboardProps> = ({
+  selectedRoot,
+  selectedScaleName,
+  instrument,
+  isLoaded = true,
+  instrumentKey = 'guitar-acoustic'
+}) => {
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretDimensions, setFretDimensions] = useState({ fretWidth: 60, markerSize: 28 });
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
 
-  const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
+  const isBass = instrumentKey === 'bass-electric';
+  const tunings = isBass ? BASS_TUNINGS : GUITAR_TUNINGS;
+
+  // Reset tuning if switching between bass and guitar
+  useEffect(() => {
+    setSelectedTuningName("Standard");
+  }, [isBass]);
+
+  const currentTuning = tunings[selectedTuningName as keyof typeof tunings] || tunings["Standard"];
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
   const scaleNotes = useMemo(() => {
@@ -92,8 +109,8 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, 
   }, [displayTuning, scaleNotes, selectedRoot]);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    if (synth.current && Tone.context.state === 'running') {
-      synth.current.triggerAttackRelease(noteWithOctave, "8n");
+    if (instrument.current && Tone.context.state === 'running' && isLoaded) {
+      instrument.current.triggerAttackRelease(noteWithOctave, "8n");
     }
   };
 
@@ -110,7 +127,7 @@ const Fretboard: React.FC<FretboardProps> = ({ selectedRoot, selectedScaleName, 
               <SelectValue placeholder="Select Tuning" />
             </SelectTrigger>
             <SelectContent>
-              {Object.keys(GUITAR_TUNINGS).map((tuning) => (
+              {Object.keys(tunings).map((tuning) => (
                 <SelectItem key={tuning} value={tuning}>{tuning}</SelectItem>
               ))}
             </SelectContent>

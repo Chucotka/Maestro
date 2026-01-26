@@ -14,6 +14,12 @@ export const GUITAR_TUNINGS = {
   "DADGAD":         ["D2", "A2", "D3", "G3", "A3", "D4"],
 };
 
+export const BASS_TUNINGS = {
+  "Standard":       ["E1", "A1", "D2", "G2"],
+  "Drop D":         ["D1", "A1", "D2", "G2"],
+  "5-String":       ["B0", "E1", "A1", "D2", "G2"],
+};
+
 export const SCALES = {
   // --- Major / Minor ---
   MAJOR: [0, 2, 4, 5, 7, 9, 11],

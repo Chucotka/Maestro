@@ -1,32 +1,27 @@
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Fretboard from "@/components/Fretboard";
 import Piano from "@/components/Piano";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
-import { Music, Guitar, Piano as PianoIcon } from "lucide-react";
+import { Music, Guitar, Piano as PianoIcon, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ALL_NOTES, SCALES } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
+import { useSampler } from "@/hooks/useSampler";
+import { InstrumentKey, INSTRUMENTS } from "@/lib/audioUtils";
 
 const Index = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-  const [selectedInstrument, setSelectedInstrument] = useState('guitar');
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentKey>('guitar-acoustic');
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const { theme, setTheme } = useTheme();
   
-  const synth = useRef<Tone.Synth | null>(null);
-
-  useEffect(() => {
-    synth.current = new Tone.Synth().toDestination();
-    return () => {
-      synth.current?.dispose();
-    };
-  }, []);
+  const { sampler, isLoaded } = useSampler(selectedInstrument);
 
   const enableAudio = async () => {
     try {
@@ -99,19 +94,25 @@ const Index = () => {
               </Select>
             </div>
 
-            <ToggleGroup 
-              type="single" 
-              value={selectedInstrument} 
-              onValueChange={(value) => { if (value) setSelectedInstrument(value) }}
-              className="border border-gray-200 dark:border-gray-700 rounded-md"
-            >
-              <ToggleGroupItem value="guitar" aria-label="Select guitar">
-                <Guitar className="h-5 w-5 mr-2" /> Guitar
-              </ToggleGroupItem>
-              <ToggleGroupItem value="piano" aria-label="Select piano">
-                <PianoIcon className="h-5 w-5 mr-2" /> Piano
-              </ToggleGroupItem>
-            </ToggleGroup>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="instrument-select" className="text-gray-700 dark:text-gray-300">Instrument:</Label>
+              <Select
+                value={selectedInstrument}
+                onValueChange={(value) => setSelectedInstrument(value as InstrumentKey)}
+              >
+                <SelectTrigger id="instrument-select" className="w-[180px]">
+                  <SelectValue placeholder="Select Instrument" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(INSTRUMENTS).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!isLoaded && isAudioEnabled && (
+                <Loader2 className="h-4 w-4 animate-spin text-sky-500" />
+              )}
+            </div>
             
             <div className="flex items-center space-x-2">
               <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
@@ -120,17 +121,20 @@ const Index = () => {
           </div>
         </div>
 
-        {selectedInstrument === 'guitar' ? (
+        {selectedInstrument !== 'piano' ? (
           <Fretboard 
             selectedRoot={selectedRoot}
             selectedScaleName={selectedScaleName}
-            synth={synth}
+            instrument={sampler}
+            isLoaded={isLoaded}
+            instrumentKey={selectedInstrument}
           />
         ) : (
           <Piano 
             selectedRoot={selectedRoot}
             selectedScaleName={selectedScaleName}
-            synth={synth}
+            instrument={sampler}
+            isLoaded={isLoaded}
           />
         )}
       </div>
