@@ -72,8 +72,13 @@ const Fretboard: React.FC<FretboardProps> = ({
   }, [mode, selectedRoot, selectedCagedShape, currentTuning]);
 
   useLayoutEffect(() => {
-    onTuningChange(instrumentType === 'bass' ? "Bass (Standard)" : "Standard");
-  }, [instrumentType, onTuningChange]);
+    const isCurrentlyBassTuning = selectedTuningName.startsWith("Bass");
+    if (instrumentType === 'bass' && !isCurrentlyBassTuning) {
+      onTuningChange("Bass (Standard)");
+    } else if (instrumentType !== 'bass' && isCurrentlyBassTuning) {
+      onTuningChange("Standard");
+    }
+  }, [instrumentType, selectedTuningName, onTuningChange]);
 
   useLayoutEffect(() => {
     const container = fretboardContainerRef.current;

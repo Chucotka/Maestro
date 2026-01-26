@@ -9,9 +9,10 @@ import { ALL_NOTES } from '@/lib/fretboardUtils';
 interface ArpeggioPlayerProps {
   notes: string[]; // Note names like ["C", "E", "G"]
   sampler: Tone.Sampler | null;
+  instrumentType?: string;
 }
 
-const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler }) => {
+const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrumentType }) => {
   const { t } = useI18n();
   const [isPlaying, setIsPlaying] = useState(false);
   const [tempo, setTempo] = useState(120);
@@ -35,7 +36,7 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler }) => {
     setIsPlaying(true);
 
     // Create actual notes with octaves for playback, ensuring they go up
-    let currentOctave = 4;
+    let currentOctave = instrumentType === 'bass' ? 1 : 3;
     let lastNoteIndex = -1;
 
     const playNotes = notes.map((n) => {
@@ -53,19 +54,17 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler }) => {
 
     Tone.Transport.bpm.value = tempo;
 
-    const events = sequence.map((note, i) => ({
-      time: i * (60 / tempo) * 0.5, // 8th notes
-      note
-    }));
-
+    // Use "8n" as a base for timing
     partRef.current = new Tone.Part((time, value) => {
       sampler.triggerAttackRelease(value.note, "8n", time);
-    }, events);
+    }, sequence.map((note, i) => [Tone.Time("8n").toSeconds() * i, note]));
 
     partRef.current.loop = true;
-    partRef.current.loopEnd = events.length * (60 / tempo) * 0.5;
+    partRef.current.loopEnd = Tone.Time("8n").toSeconds() * sequence.length;
 
-    Tone.Transport.start();
+    if (Tone.Transport.state !== 'started') {
+      Tone.Transport.start();
+    }
     partRef.current.start(0);
   };
 

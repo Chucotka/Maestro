@@ -74,6 +74,52 @@ const Index = () => {
   
   const samplers = useRef<Partial<Record<InstrumentType, Tone.Sampler>>>({});
   const arpeggioRef = useRef<HTMLDivElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const playCurrent = useCallback(() => {
+    const inst = selectedInstrument;
+    const sampler = samplers.current[inst];
+    if (!sampler || Tone.context.state !== 'running') {
+      toast.error("Audio not ready");
+      return;
+    }
+
+    if (viewMode === 'chord') {
+      const notes = getChordNotes(selectedRoot, CHORDS[selectedChordName]);
+      let currentOctave = inst === 'bass' ? 1 : 3;
+      let lastIdx = -1;
+      const playNotes = notes.map(n => {
+        const idx = ALL_NOTES.indexOf(n);
+        if (idx < lastIdx) currentOctave++;
+        lastIdx = idx;
+        return `${n}${currentOctave}`;
+      });
+      sampler.triggerAttackRelease(playNotes, "2n");
+    } else {
+      // Play scale ascending
+      const notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+      let currentOctave = inst === 'bass' ? 1 : 3;
+      let lastIdx = -1;
+      const playNotes = notes.map(n => {
+        const idx = ALL_NOTES.indexOf(n);
+        if (idx < lastIdx) currentOctave++;
+        lastIdx = idx;
+        return `${n}${currentOctave}`;
+      });
+
+      const now = Tone.now();
+      playNotes.forEach((note, i) => {
+        sampler.triggerAttackRelease(note, "8n", now + i * 0.25);
+      });
+    }
+  }, [selectedInstrument, selectedRoot, selectedChordName, selectedScaleName, viewMode]);
+
+  // Auto-play chord when changed in chord mode
+  useEffect(() => {
+    if (viewMode === 'chord' && isAudioEnabled) {
+      playCurrent();
+    }
+  }, [selectedRoot, selectedChordName, viewMode]);
 
   useEffect(() => {
     const currentSamplers = samplers.current;
@@ -440,11 +486,15 @@ const Index = () => {
             </div>
 
             <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700 landscape:scale-90">
-              <Button variant="ghost" size="icon" className="text-gray-300"><ChevronLeft className="h-6 w-6" /></Button>
-              <div className="flex items-center gap-2 px-4 py-2 bg-stone-800 rounded text-gray-300 font-bold min-w-[150px] justify-center">
-                <Volume2 className="h-5 w-5 mr-2" /> {t('playStatus', { current: '1', total: '6' })}
-              </div>
-              <Button variant="ghost" size="icon" className="text-gray-300"><ChevronRight className="h-6 w-6" /></Button>
+              <Button variant="ghost" size="icon" className="text-gray-300" onClick={() => { /* Prev item logic */ }}><ChevronLeft className="h-6 w-6" /></Button>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 px-4 py-2 bg-stone-800 hover:bg-stone-700 rounded text-gray-300 font-bold min-w-[150px] justify-center"
+                onClick={playCurrent}
+              >
+                <Volume2 className="h-5 w-5 mr-2" /> {t('play')}
+              </Button>
+              <Button variant="ghost" size="icon" className="text-gray-300" onClick={() => { /* Next item logic */ }}><ChevronRight className="h-6 w-6" /></Button>
             </div>
           </div>
 
@@ -509,6 +559,7 @@ const Index = () => {
               <ArpeggioPlayer
                 notes={activeNotesForArpeggio}
                 sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}
+                instrumentType={selectedInstrument}
               />
 
               <ProgressionGenerator
