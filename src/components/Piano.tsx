@@ -97,7 +97,7 @@ const Piano: React.FC<PianoProps> = ({
   return (
     <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300">
       <ScrollArea className="w-full whitespace-nowrap border-none">
-        <div className="min-w-[800px] h-48 md:h-64 p-2 bg-[#121212]">
+        <div className="min-w-[800px] h-48 md:h-64 landscape:h-40 p-2 bg-[#121212]">
         <div ref={pianoContainerRef} className="relative w-full h-full">
           {keyDimensions.whiteKeyWidth > 0 && (
             <div className="relative w-full h-full">

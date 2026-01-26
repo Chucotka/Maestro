@@ -177,8 +177,8 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-start bg-[#121212] transition-colors duration-300">
       {/* Top Navigation Bar from Reference Image */}
-      <div className="w-full bg-[#1e1e1e] border-b border-stone-800 px-4 py-2 mb-4 overflow-x-auto">
-        <div className="flex items-center justify-center gap-1 md:gap-4 min-w-max">
+      <div className="w-full bg-[#1e1e1e] border-b border-stone-800 px-4 py-2 mb-4 overflow-x-auto landscape:mb-1 landscape:py-1">
+        <div className="flex items-center justify-center gap-1 md:gap-4 min-w-max landscape:gap-2">
           {[
             { id: 'chords', label: t('chords'), action: () => setViewMode('chord') },
             { id: 'triads', label: t('triads') },
@@ -263,16 +263,17 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="w-full max-w-7xl mx-auto px-4">
+      <div className="w-full max-w-7xl mx-auto px-4 landscape:px-2">
 
         {/* Root Note Selection Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-1 mb-4">
+        <div className="flex flex-wrap items-center justify-center gap-1 mb-4 landscape:mb-2 landscape:gap-0.5">
           {ALL_NOTES.map((note) => (
             <Button
               key={note}
               variant="outline"
               className={cn(
                 "w-12 h-12 md:w-16 md:h-16 text-lg font-bold transition-all border-stone-700 bg-[#2a2a2a] text-gray-300 hover:bg-stone-800 hover:text-white",
+                "landscape:w-11 landscape:h-11 landscape:text-base",
                 selectedRoot === note ? "bg-[#b06a3b] text-white border-[#b06a3b] hover:bg-[#b06a3b]" : ""
               )}
               onClick={() => setSelectedRoot(note)}
@@ -282,8 +283,8 @@ const Index = () => {
           ))}
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="relative w-full border border-stone-800 rounded-lg overflow-hidden bg-[#1a1a1a] shadow-inner">
+        <div className="flex flex-col gap-4 landscape:gap-2">
+          <div className="relative w-full border border-stone-800 rounded-lg overflow-hidden bg-[#1a1a1a] shadow-inner landscape:max-h-[50vh]">
             {isSelectedLoading && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
                 <Loader2 className="h-10 w-10 animate-spin text-sky-500 mb-2" />
@@ -296,8 +297,8 @@ const Index = () => {
                 selectedRoot={selectedRoot}
                 selectedScaleName={selectedScaleName}
                 selectedChordName={selectedChordName}
-                mode={viewMode === 'caged' ? 'chord' : viewMode}
-                onModeChange={(mode) => setViewMode(mode as any)}
+                mode={viewMode === 'caged' ? 'chord' : viewMode as 'scale' | 'chord'}
+                onModeChange={(mode) => setViewMode(mode as 'scale' | 'chord' | 'caged')}
                 sampler={samplers.current.piano || null}
               />
             ) : (
@@ -316,22 +317,22 @@ const Index = () => {
             )}
           </div>
 
-          <div className="px-4 pt-4">
+          <div className="px-4 pt-4 landscape:pt-1 landscape:pb-1">
             <AudioVisualizer isAudioEnabled={isAudioEnabled} />
           </div>
 
           {/* Info Display and Playback Controls */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 landscape:p-2 landscape:gap-2">
             <div className="flex flex-col">
-              <h2 className="text-3xl font-bold text-[#b06a3b]">
+              <h2 className="text-3xl font-bold text-[#b06a3b] landscape:text-xl">
                 {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` : `${selectedRoot} ${t(selectedScaleName as any)}`}
               </h2>
-              <p className="text-xl text-stone-500 font-mono">
+              <p className="text-xl text-stone-500 font-mono landscape:text-sm">
                 {activeNotesForArpeggio.join(' . ')} / {viewMode === 'chord' ? CHORDS[selectedChordName].join(',') : SCALES[selectedScaleName].join(',')}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700">
+            <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700 landscape:scale-90">
               <Button variant="ghost" size="icon" className="text-gray-300"><ChevronLeft className="h-6 w-6" /></Button>
               <div className="flex items-center gap-2 px-4 py-2 bg-stone-800 rounded text-gray-300 font-bold min-w-[150px] justify-center">
                 <Volume2 className="h-5 w-5 mr-2" /> {t('playStatus', { current: '1', total: '6' })}
@@ -341,23 +342,23 @@ const Index = () => {
           </div>
 
           {/* Bottom Action Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 landscape:mb-4 landscape:gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800">
+                <Button variant="outline" className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800">
                   <Music className="mr-2 h-5 w-5" /> {viewMode === 'chord' ? t('chordType') : t('scaleMode')}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[300px] overflow-y-auto">
                 {viewMode === 'chord'
                   ? Object.keys(CHORDS).map(c => (
-                      <DropdownMenuItem key={c} onClick={() => setSelectedChordName(c as any)} className="hover:bg-stone-800 focus:bg-stone-800">
+                      <DropdownMenuItem key={c} onClick={() => setSelectedChordName(c as keyof typeof CHORDS)} className="hover:bg-stone-800 focus:bg-stone-800">
                         {c}
                       </DropdownMenuItem>
                     ))
                   : Object.keys(SCALES).map(s => (
-                      <DropdownMenuItem key={s} onClick={() => setSelectedScaleName(s as any)} className="hover:bg-stone-800 focus:bg-stone-800">
-                        {t(s as any)}
+                      <DropdownMenuItem key={s} onClick={() => setSelectedScaleName(s as keyof typeof SCALES)} className="hover:bg-stone-800 focus:bg-stone-800">
+                        {t(s as keyof typeof SCALES)}
                       </DropdownMenuItem>
                     ))
                 }
@@ -366,23 +367,23 @@ const Index = () => {
 
             <Button
               variant="outline"
-              className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800"
+              className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800"
               onClick={() => toast.info(viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}: ${activeNotesForArpeggio.join(', ')}` : `${selectedRoot} ${t(selectedScaleName as any)}: ${activeNotesForArpeggio.join(', ')}`)}
             >
               <Zap className="mr-2 h-5 w-5" /> Info
             </Button>
 
-            <Button variant="outline" className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.info("Finding recommended scales...")}>
+            <Button variant="outline" className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.info("Finding recommended scales...")}>
               <Zap className="mr-2 h-5 w-5" /> {t('recScales')}
             </Button>
 
-            <Button variant="outline" className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.success("Added to Favorites!")}>
+            <Button variant="outline" className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.success("Added to Favorites!")}>
               <Zap className="mr-2 h-5 w-5 text-red-500" /> {t('myFav')}
             </Button>
           </div>
 
           {/* Secondary Tools */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pb-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pb-24 landscape:mt-4">
             <div className="flex flex-col gap-6">
               <CircleOfFifths
                 selectedRoot={selectedRoot}

@@ -5,6 +5,7 @@ import { Play, Square, Volume2, VolumeX } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { useI18n } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 
 const Metronome: React.FC = () => {
   const { t } = useI18n();
@@ -118,10 +119,5 @@ const Metronome: React.FC = () => {
     </div>
   );
 };
-
-// Simple CN helper since I didn't import it
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
-}
 
 export default Metronome;

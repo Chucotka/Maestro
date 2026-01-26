@@ -10,7 +10,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from '@/lib/i18n';
 
 const NUM_FRETS = 24;
-const STRING_HEIGHT_PX = 45;
+const DEFAULT_STRING_HEIGHT_PX = 45;
+const LANDSCAPE_STRING_HEIGHT_PX = 32;
 const FRET_NUMBER_HEIGHT_PX = 40;
 const STRING_LABEL_WIDTH_PX = 30;
 
@@ -46,7 +47,10 @@ const Fretboard: React.FC<FretboardProps> = ({
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretDimensions, setFretDimensions] = useState({ fretWidth: 60, markerSize: 28 });
+  const [isLandscape, setIsLandscape] = useState(false);
   const fretboardContainerRef = useRef<HTMLDivElement>(null);
+
+  const stringHeight = isLandscape ? LANDSCAPE_STRING_HEIGHT_PX : DEFAULT_STRING_HEIGHT_PX;
 
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
@@ -76,9 +80,15 @@ const Fretboard: React.FC<FretboardProps> = ({
 
     const updateDimensions = () => {
       const width = container.offsetWidth;
+      const height = window.innerHeight;
+      const widthVp = window.innerWidth;
+      const landscape = widthVp > height && widthVp < 1024;
+      setIsLandscape(landscape);
+
       if (width > 0) {
         const newFretWidth = width / NUM_FRETS;
-        const newMarkerSize = Math.min(newFretWidth * 0.8, STRING_HEIGHT_PX * 0.7);
+        const currentStringHeight = landscape ? LANDSCAPE_STRING_HEIGHT_PX : DEFAULT_STRING_HEIGHT_PX;
+        const newMarkerSize = Math.min(newFretWidth * 0.8, currentStringHeight * 0.85);
         setFretDimensions({
           fretWidth: newFretWidth,
           markerSize: newMarkerSize,
@@ -133,7 +143,7 @@ const Fretboard: React.FC<FretboardProps> = ({
           noteName,
           noteWithOctave,
           isScaleNote,
-          sequenceNumber: sequenceNumber as any,
+          sequenceNumber: sequenceNumber as number | string | null,
           isRoot,
         });
       }
@@ -158,7 +168,7 @@ const Fretboard: React.FC<FretboardProps> = ({
               <div
                 key={`fret-num-${fretNumber}`}
                 className="flex-shrink-0 flex items-center justify-center text-sm font-bold text-gray-400"
-                style={{ width: `${fretDimensions.fretWidth}px`, height: `${FRET_NUMBER_HEIGHT_PX}px` }}
+                style={{ width: `${fretDimensions.fretWidth}px`, height: isLandscape ? '24px' : `${FRET_NUMBER_HEIGHT_PX}px` }}
               >
                 {fretNumber}
               </div>
@@ -172,7 +182,7 @@ const Fretboard: React.FC<FretboardProps> = ({
               <div
                 key={`string-label-outer-left-${i}`}
                 className="flex items-center justify-center text-xs font-bold text-gray-500"
-                style={{ height: `${STRING_HEIGHT_PX}px` }}
+                style={{ height: `${stringHeight}px` }}
               >
                 {note.match(/[A-G]#?/)?.[0] || ''}
               </div>
@@ -184,7 +194,7 @@ const Fretboard: React.FC<FretboardProps> = ({
               <div
                 key={`string-label-left-${i}`}
                 className="flex items-center justify-center text-xs font-bold text-gray-400"
-                style={{ height: `${STRING_HEIGHT_PX}px` }}
+                style={{ height: `${stringHeight}px` }}
               >
                 {note.match(/[A-G]#?/)?.[0] || ''}
               </div>
@@ -196,7 +206,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             className="relative bg-[#3d1c13] transition-colors duration-300 border-y border-stone-900 overflow-hidden"
             style={{ 
               flex: 1,
-              height: `${displayTuning.length * STRING_HEIGHT_PX}px`,
+              height: `${displayTuning.length * stringHeight}px`,
               backgroundImage: 'linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)',
               backgroundSize: '100% 1px, 40px 100%'
             }}
@@ -231,7 +241,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                   className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
                   style={{
                     left: `${fret * fretDimensions.fretWidth - fretDimensions.fretWidth / 2}px`,
-                    top: `calc(50% - ${STRING_HEIGHT_PX * 1.5}px)`,
+                    top: `calc(50% - ${stringHeight * 1.5}px)`,
                     transform: 'translate(-50%, -50%)',
                   }}
                 />
@@ -239,7 +249,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                   className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
                   style={{
                     left: `${fret * fretDimensions.fretWidth - fretDimensions.fretWidth / 2}px`,
-                    top: `calc(50% + ${STRING_HEIGHT_PX * 1.5}px)`,
+                    top: `calc(50% + ${stringHeight * 1.5}px)`,
                     transform: 'translate(-50%, -50%)',
                   }}
                 />
@@ -252,7 +262,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                 const shouldRender = showAllNotes || note.isScaleNote;
                 if (!shouldRender) return null;
 
-                const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
+                const topPos = note.stringIndex * stringHeight + stringHeight / 2;
                 const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
 
                 return (
@@ -279,7 +289,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                 if (!shouldRender) return null;
 
                 const leftPos = note.fretNumber * fretDimensions.fretWidth - fretDimensions.fretWidth / 2;
-                const topPos = note.stringIndex * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2;
+                const topPos = note.stringIndex * stringHeight + stringHeight / 2;
                 const markerContent = showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName);
 
                 return (
@@ -303,7 +313,7 @@ const Fretboard: React.FC<FretboardProps> = ({
               <div
                 key={`string-line-${i}`}
                 className="absolute left-0 w-full h-[1.5px] bg-black/60 shadow-sm"
-                style={{ top: `${i * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2}px`, transform: 'translateY(-50%)' }}
+                style={{ top: `${i * stringHeight + stringHeight / 2}px`, transform: 'translateY(-50%)' }}
               />
             ))}
           </div>
@@ -313,7 +323,7 @@ const Fretboard: React.FC<FretboardProps> = ({
               <div
                 key={`string-label-right-${i}`}
                 className="flex items-center justify-center text-xs font-bold text-gray-400"
-                style={{ height: `${STRING_HEIGHT_PX}px` }}
+                style={{ height: `${stringHeight}px` }}
               >
                 {note.match(/[A-G]#?/)?.[0] || ''}
               </div>
