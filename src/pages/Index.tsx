@@ -1,13 +1,16 @@
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Fretboard from "@/components/Fretboard";
 import Piano from "@/components/Piano";
-import { useState, useRef, useEffect } from "react";
+import CircleOfFifths from "@/components/CircleOfFifths";
+import ProgressionGenerator from "@/components/ProgressionGenerator";
+import ArpeggioPlayer from "@/components/ArpeggioPlayer";
+import { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
 import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ALL_NOTES, SCALES } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, romanToChord, getScaleNotes, getChordNotes } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
@@ -23,6 +26,8 @@ const Index = () => {
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>('guitar');
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
+  const [selectedChordName, setSelectedChordName] = useState<keyof typeof CHORDS>("Major");
+  const [viewMode, setViewMode] = useState<'scale' | 'chord'>('scale');
   const [volume, setVolume] = useState(0.8);
   const { theme, setTheme } = useTheme();
   
@@ -53,8 +58,9 @@ const Index = () => {
   };
 
   useEffect(() => {
+    const currentSamplers = samplers.current;
     return () => {
-      Object.values(samplers.current).forEach(s => s?.dispose());
+      Object.values(currentSamplers).forEach(s => s?.dispose());
     };
   }, []);
 
@@ -62,13 +68,13 @@ const Index = () => {
     Tone.Destination.volume.value = Tone.gainToDb(volume);
   }, [volume]);
 
-  const loadInstrument = async (inst: InstrumentType) => {
+  const loadInstrument = useCallback(async (inst: InstrumentType) => {
     if (loadedInstruments.has(inst) || loadingInstruments.has(inst)) return;
 
     setLoadingInstruments(prev => new Set(prev).add(inst));
 
     try {
-      let urls: any = inst === 'piano' ? pianoUrls : inst === 'bass' ? bassUrls : guitarUrls;
+      const urls = inst === 'piano' ? pianoUrls : inst === 'bass' ? bassUrls : guitarUrls;
       let baseUrl = "";
 
       switch(inst) {
@@ -106,7 +112,7 @@ const Index = () => {
         return next;
       });
     }
-  };
+  }, [loadedInstruments, loadingInstruments]);
 
   const enableAudio = async () => {
     try {
@@ -126,6 +132,10 @@ const Index = () => {
   }, [selectedInstrument, isAudioEnabled]);
 
   const isSelectedLoading = loadingInstruments.has(selectedInstrument);
+
+  const activeNotesForArpeggio = viewMode === 'scale'
+    ? getScaleNotes(selectedRoot, SCALES[selectedScaleName])
+    : getChordNotes(selectedRoot, CHORDS[selectedChordName]);
 
   if (!isAudioEnabled) {
     return (
@@ -170,22 +180,41 @@ const Index = () => {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Label htmlFor="scale-select" className="text-gray-700 dark:text-gray-300">Scale/Mode:</Label>
-              <Select
-                value={selectedScaleName}
-                onValueChange={(value) => setSelectedScaleName(value as keyof typeof SCALES)}
-              >
-                <SelectTrigger id="scale-select" className="w-[180px]">
-                  <SelectValue placeholder="Select Scale/Mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(SCALES).map((scale) => (
-                    <SelectItem key={scale} value={scale}>{scale}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {viewMode === 'scale' ? (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="scale-select" className="text-gray-700 dark:text-gray-300">Scale/Mode:</Label>
+                <Select
+                  value={selectedScaleName}
+                  onValueChange={(value) => setSelectedScaleName(value as keyof typeof SCALES)}
+                >
+                  <SelectTrigger id="scale-select" className="w-[180px]">
+                    <SelectValue placeholder="Select Scale/Mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(SCALES).map((scale) => (
+                      <SelectItem key={scale} value={scale}>{scale}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="chord-select" className="text-gray-700 dark:text-gray-300">Chord Type:</Label>
+                <Select
+                  value={selectedChordName}
+                  onValueChange={(value) => setSelectedChordName(value as keyof typeof CHORDS)}
+                >
+                  <SelectTrigger id="chord-select" className="w-[180px]">
+                    <SelectValue placeholder="Select Chord Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(CHORDS).map((chord) => (
+                      <SelectItem key={chord} value={chord}>{chord}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <ToggleGroup 
               type="single" 
@@ -228,31 +257,66 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="relative w-full">
-          {isSelectedLoading && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
-              <Loader2 className="h-10 w-10 animate-spin text-sky-500 mb-2" />
-              <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">Loading Instrument...</p>
-            </div>
-          )}
+        <div className="flex flex-col gap-8">
+          <div className="relative w-full">
+            {isSelectedLoading && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
+                <Loader2 className="h-10 w-10 animate-spin text-sky-500 mb-2" />
+                <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">Loading Instrument...</p>
+              </div>
+            )}
 
-          {selectedInstrument === 'piano' ? (
-            <Piano
-              selectedRoot={selectedRoot}
-              selectedScaleName={selectedScaleName}
-              sampler={samplers.current.piano || null}
-            />
-          ) : (
-            <Fretboard
-              selectedRoot={selectedRoot}
-              selectedScaleName={selectedScaleName}
-              instrumentType={selectedInstrument}
-              sampler={samplers.current[selectedInstrument] || null}
-            />
-          )}
+            {selectedInstrument === 'piano' ? (
+              <Piano
+                selectedRoot={selectedRoot}
+                selectedScaleName={selectedScaleName}
+                selectedChordName={selectedChordName}
+                mode={viewMode}
+                onModeChange={setViewMode}
+                sampler={samplers.current.piano || null}
+              />
+            ) : (
+              <Fretboard
+                selectedRoot={selectedRoot}
+                selectedScaleName={selectedScaleName}
+                selectedChordName={selectedChordName}
+                mode={viewMode}
+                onModeChange={setViewMode}
+                instrumentType={selectedInstrument}
+                sampler={samplers.current[selectedInstrument] || null}
+              />
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <CircleOfFifths
+                selectedRoot={selectedRoot}
+                onNoteSelect={setSelectedRoot}
+              />
+            </div>
+
+            <div className="lg:col-span-2 flex flex-col gap-6">
+              <ArpeggioPlayer
+                notes={activeNotesForArpeggio}
+                sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}
+              />
+
+              <ProgressionGenerator
+                selectedRoot={selectedRoot}
+                onChordSelect={(root, type) => {
+                  setSelectedRoot(root);
+                  setSelectedChordName(type);
+                  setViewMode('chord');
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
-      <MadeWithDyad />
+      <div className="mt-12 pb-8">
+        <MadeWithDyad />
+      </div>
     </div>
   );
 };

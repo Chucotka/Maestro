@@ -1,15 +1,19 @@
 import React, { useMemo, useState, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getScaleNotes, SCALES } from '@/lib/fretboardUtils';
+import { getScaleNotes, getChordNotes, SCALES, CHORDS } from '@/lib/fretboardUtils';
 import { cn } from '@/lib/utils';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PianoProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
+  selectedChordName?: keyof typeof CHORDS;
+  mode: 'scale' | 'chord';
   sampler: Tone.Sampler | null;
+  onModeChange?: (mode: 'scale' | 'chord') => void;
 }
 
 interface PianoKey {
@@ -36,13 +40,25 @@ const ALL_PIANO_KEYS: PianoKey[] = (() => {
 const whiteKeys = ALL_PIANO_KEYS.filter(k => !k.isBlack);
 const blackKeys = ALL_PIANO_KEYS.filter(k => k.isBlack);
 
-const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler }) => {
+const Piano: React.FC<PianoProps> = ({
+  selectedRoot,
+  selectedScaleName,
+  selectedChordName,
+  mode,
+  sampler,
+  onModeChange
+}) => {
   const [showNoteNames, setShowNoteNames] = useState(false);
   const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
   const [keyDimensions, setKeyDimensions] = useState({ whiteKeyWidth: 20, blackKeyWidth: 12 });
   const pianoContainerRef = useRef<HTMLDivElement>(null);
 
-  const scaleNotes = useMemo(() => getScaleNotes(selectedRoot, SCALES[selectedScaleName]), [selectedRoot, selectedScaleName]);
+  const activeNotesList = useMemo(() => {
+    if (mode === 'chord' && selectedChordName) {
+      return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
+    }
+    return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+  }, [selectedRoot, selectedScaleName, selectedChordName, mode]);
 
   useLayoutEffect(() => {
     const container = pianoContainerRef.current;
@@ -78,7 +94,14 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
 
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
-      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-8 justify-center items-center">
+      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6 justify-center items-center">
+        <Tabs value={mode} onValueChange={(v) => onModeChange?.(v as 'scale' | 'chord')} className="w-[200px]">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="scale">Scales</TabsTrigger>
+            <TabsTrigger value="chord">Chords</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="flex items-center space-x-2">
           <Switch id="show-note-names-piano" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
           <Label htmlFor="show-note-names-piano" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
@@ -92,7 +115,7 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
             <div className="relative w-full h-full">
               <div className="flex w-full h-full absolute top-0 left-0">
                 {whiteKeys.map(key => {
-                  const isHighlighted = scaleNotes.includes(key.note);
+                  const isHighlighted = activeNotesList.includes(key.note);
                   const isRoot = isHighlighted && key.note === selectedRoot;
                   return (
                     <button
@@ -114,7 +137,7 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
               </div>
               <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
               {blackKeys.map(key => {
-                const isHighlighted = scaleNotes.includes(key.note);
+                const isHighlighted = activeNotesList.includes(key.note);
                 const isRoot = isHighlighted && key.note === selectedRoot;
 
                 const precedingWhiteNote = key.note === 'C#' ? 'C' :
@@ -156,8 +179,10 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, sampler 
       </ScrollArea>
 
       <div className="mt-8 text-center">
-        <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Current Scale Notes:</h3>
-        <p className="text-lg text-gray-700 dark:text-gray-300">{scaleNotes.join(", ")}</p>
+        <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">
+          Current {mode === 'scale' ? 'Scale' : 'Chord'} Notes:
+        </h3>
+        <p className="text-lg text-gray-700 dark:text-gray-300">{activeNotesList.join(", ")}</p>
       </div>
     </div>
   );

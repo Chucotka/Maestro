@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getNoteAtFret, getScaleNotes, GUITAR_TUNINGS, SCALES } from '@/lib/fretboardUtils';
+import { getNoteAtFret, getScaleNotes, getChordNotes, GUITAR_TUNINGS, SCALES, CHORDS } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -18,15 +19,21 @@ const FRET_DOT_FRETS_DOUBLE = [12, 24];
 interface FretboardProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
+  selectedChordName?: keyof typeof CHORDS;
+  mode: 'scale' | 'chord';
   sampler: Tone.Sampler | null;
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
+  onModeChange?: (mode: 'scale' | 'chord') => void;
 }
 
 const Fretboard: React.FC<FretboardProps> = ({
   selectedRoot,
   selectedScaleName,
+  selectedChordName,
+  mode,
   sampler,
-  instrumentType
+  instrumentType,
+  onModeChange
 }) => {
   const [selectedTuningName, setSelectedTuningName] = useState<string>(
     instrumentType === 'bass' ? "Bass (Standard)" : "Standard"
@@ -39,10 +46,12 @@ const Fretboard: React.FC<FretboardProps> = ({
   const currentTuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS];
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
-  const scaleNotes = useMemo(() => {
-    const intervals = SCALES[selectedScaleName];
-    return getScaleNotes(selectedRoot, intervals);
-  }, [selectedRoot, selectedScaleName]);
+  const activeNotesList = useMemo(() => {
+    if (mode === 'chord' && selectedChordName) {
+      return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
+    }
+    return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+  }, [selectedRoot, selectedScaleName, selectedChordName, mode]);
 
   useLayoutEffect(() => {
     setSelectedTuningName(instrumentType === 'bass' ? "Bass (Standard)" : "Standard");
@@ -86,7 +95,7 @@ const Fretboard: React.FC<FretboardProps> = ({
         const noteWithOctave = getNoteAtFret(openStringNote, fret);
         const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
         
-        const sequenceIndex = scaleNotes.indexOf(noteName);
+        const sequenceIndex = activeNotesList.indexOf(noteName);
         const isScaleNote = sequenceIndex !== -1;
         const isRoot = isScaleNote && noteName === selectedRoot;
 
@@ -102,7 +111,7 @@ const Fretboard: React.FC<FretboardProps> = ({
       }
     });
     return notes;
-  }, [displayTuning, scaleNotes, selectedRoot]);
+  }, [displayTuning, activeNotesList, selectedRoot]);
 
   const handleNoteClick = (noteWithOctave: string) => {
     if (sampler && Tone.context.state === 'running') {
@@ -112,7 +121,14 @@ const Fretboard: React.FC<FretboardProps> = ({
 
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300 overflow-hidden">
-      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-8 justify-center items-center">
+      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6 justify-center items-center">
+        <Tabs value={mode} onValueChange={(v) => onModeChange?.(v as 'scale' | 'chord')} className="w-[200px]">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="scale">Scales</TabsTrigger>
+            <TabsTrigger value="chord">Chords</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="flex items-center gap-2">
           <Label htmlFor="tuning-select" className="text-gray-700 dark:text-gray-300">Tuning:</Label>
           <Select
@@ -286,9 +302,11 @@ const Fretboard: React.FC<FretboardProps> = ({
       </ScrollArea>
 
       <div className="mt-8 text-center">
-        <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Current Scale Notes:</h3>
+        <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">
+          Current {mode === 'scale' ? 'Scale' : 'Chord'} Notes:
+        </h3>
         <p className="text-lg text-gray-700 dark:text-gray-300">
-          {scaleNotes.join(", ")}
+          {activeNotesList.join(", ")}
         </p>
       </div>
     </div>
