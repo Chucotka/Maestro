@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getNoteAtFret, getScaleNotes, getChordNotes, GUITAR_TUNINGS, SCALES, CHORDS } from '@/lib/fretboardUtils';
+import { getNoteAtFret, getScaleNotes, getChordNotes, getCAGEDNotes, GUITAR_TUNINGS, SCALES, CHORDS, CAGED_SHAPES } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useI18n } from '@/lib/i18n';
 
 const NUM_FRETS = 24;
 const STRING_HEIGHT_PX = 40;
@@ -20,21 +21,24 @@ interface FretboardProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
   selectedChordName?: keyof typeof CHORDS;
-  mode: 'scale' | 'chord';
+  selectedCagedShape?: keyof typeof CAGED_SHAPES;
+  mode: 'scale' | 'chord' | 'caged';
   sampler: Tone.Sampler | null;
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
-  onModeChange?: (mode: 'scale' | 'chord') => void;
+  onModeChange?: (mode: 'scale' | 'chord' | 'caged') => void;
 }
 
 const Fretboard: React.FC<FretboardProps> = ({
   selectedRoot,
   selectedScaleName,
   selectedChordName,
+  selectedCagedShape,
   mode,
   sampler,
   instrumentType,
   onModeChange
 }) => {
+  const { t } = useI18n();
   const [selectedTuningName, setSelectedTuningName] = useState<string>(
     instrumentType === 'bass' ? "Bass (Standard)" : "Standard"
   );
@@ -47,11 +51,19 @@ const Fretboard: React.FC<FretboardProps> = ({
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
   const activeNotesList = useMemo(() => {
+    if (mode === 'caged') {
+      return getChordNotes(selectedRoot, CHORDS['Major']);
+    }
     if (mode === 'chord' && selectedChordName) {
       return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
     }
     return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
   }, [selectedRoot, selectedScaleName, selectedChordName, mode]);
+
+  const cagedFretNotes = useMemo(() => {
+    if (mode !== 'caged' || !selectedCagedShape) return [];
+    return getCAGEDNotes(selectedRoot, selectedCagedShape, currentTuning);
+  }, [mode, selectedRoot, selectedCagedShape, currentTuning]);
 
   useLayoutEffect(() => {
     setSelectedTuningName(instrumentType === 'bass' ? "Bass (Standard)" : "Standard");
@@ -91,12 +103,27 @@ const Fretboard: React.FC<FretboardProps> = ({
     }[] = [];
 
     displayTuning.forEach((openStringNote, stringIndex) => {
+      const stringNum = displayTuning.length - stringIndex;
+
       for (let fret = 0; fret <= NUM_FRETS; fret++) {
         const noteWithOctave = getNoteAtFret(openStringNote, fret);
         const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
         
-        const sequenceIndex = activeNotesList.indexOf(noteName);
-        const isScaleNote = sequenceIndex !== -1;
+        let isScaleNote = false;
+        let sequenceNumber: number | string | null = null;
+
+        if (mode === 'caged') {
+          const cagedNote = cagedFretNotes.find(cn => cn.string === stringNum && cn.fret === fret);
+          if (cagedNote) {
+            isScaleNote = true;
+            sequenceNumber = cagedNote.interval;
+          }
+        } else {
+          const sequenceIndex = activeNotesList.indexOf(noteName);
+          isScaleNote = sequenceIndex !== -1;
+          sequenceNumber = isScaleNote ? (sequenceIndex + 1) : null;
+        }
+
         const isRoot = isScaleNote && noteName === selectedRoot;
 
         notes.push({
@@ -105,13 +132,13 @@ const Fretboard: React.FC<FretboardProps> = ({
           noteName,
           noteWithOctave,
           isScaleNote,
-          sequenceNumber: isScaleNote ? (sequenceIndex + 1) : null,
+          sequenceNumber: sequenceNumber as any,
           isRoot,
         });
       }
     });
     return notes;
-  }, [displayTuning, activeNotesList, selectedRoot]);
+  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes]);
 
   const handleNoteClick = (noteWithOctave: string) => {
     if (sampler && Tone.context.state === 'running') {
@@ -122,15 +149,16 @@ const Fretboard: React.FC<FretboardProps> = ({
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300 overflow-hidden">
       <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6 justify-center items-center">
-        <Tabs value={mode} onValueChange={(v) => onModeChange?.(v as 'scale' | 'chord')} className="w-[200px]">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="scale">Scales</TabsTrigger>
-            <TabsTrigger value="chord">Chords</TabsTrigger>
+        <Tabs value={mode} onValueChange={(v) => onModeChange?.(v as any)} className="w-[300px]">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="scale">{t('scales')}</TabsTrigger>
+            <TabsTrigger value="chord">{t('chords')}</TabsTrigger>
+            <TabsTrigger value="caged">{t('caged')}</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="flex items-center gap-2">
-          <Label htmlFor="tuning-select" className="text-gray-700 dark:text-gray-300">Tuning:</Label>
+          <Label htmlFor="tuning-select" className="text-gray-700 dark:text-gray-300">{t('tuning')}:</Label>
           <Select
             value={selectedTuningName}
             onValueChange={(value) => setSelectedTuningName(value)}
@@ -149,11 +177,11 @@ const Fretboard: React.FC<FretboardProps> = ({
         </div>
         <div className="flex items-center space-x-2">
           <Switch id="show-all-notes" checked={showAllNotes} onCheckedChange={setShowAllNotes} />
-          <Label htmlFor="show-all-notes" className="text-gray-700 dark:text-gray-300">Show All Notes</Label>
+          <Label htmlFor="show-all-notes" className="text-gray-700 dark:text-gray-300">{t('showAllNotes')}</Label>
         </div>
         <div className="flex items-center space-x-2">
           <Switch id="show-note-names" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
-          <Label htmlFor="show-note-names" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
+          <Label htmlFor="show-note-names" className="text-gray-700 dark:text-gray-300">{t('showNoteNames')}</Label>
         </div>
       </div>
 
@@ -303,10 +331,16 @@ const Fretboard: React.FC<FretboardProps> = ({
 
       <div className="mt-8 text-center">
         <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">
-          Current {mode === 'scale' ? 'Scale' : 'Chord'} Notes:
+          {mode === 'caged'
+            ? t('cagedShapeNotes', { shape: selectedCagedShape || '' })
+            : mode === 'scale'
+            ? t('scaleNotes')
+            : t('chordNotes')}
         </h3>
         <p className="text-lg text-gray-700 dark:text-gray-300">
-          {activeNotesList.join(", ")}
+          {mode === 'caged'
+            ? cagedFretNotes.map(n => `${n.noteName} (${n.interval})`).join(", ")
+            : activeNotesList.join(", ")}
         </p>
       </div>
     </div>

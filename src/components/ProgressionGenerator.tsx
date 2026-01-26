@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { EMOTIONS, romanToChord, CHORDS } from '@/lib/fretboardUtils';
+import { useI18n } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ interface ProgressionGeneratorProps {
 }
 
 const ProgressionGenerator: React.FC<ProgressionGeneratorProps> = ({ selectedRoot, onChordSelect }) => {
+  const { t } = useI18n();
   const [selectedEmotion, setSelectedEmotion] = useState<keyof typeof EMOTIONS>("Happy / Joyful");
   const [currentProgression, setCurrentProgression] = useState<string[]>([]);
 
@@ -21,11 +23,11 @@ const ProgressionGenerator: React.FC<ProgressionGeneratorProps> = ({ selectedRoo
 
   return (
     <div className="p-4 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full">
-      <h3 className="text-lg font-bold mb-4 text-center dark:text-gray-100">Emotion Progression Generator</h3>
+      <h3 className="text-lg font-bold mb-4 dark:text-gray-100">{t('emotionGenerator')}</h3>
 
       <div className="flex flex-col gap-4 items-center">
         <div className="flex items-center gap-2">
-          <Label>Emotion:</Label>
+          <Label>{t('emotion')}:</Label>
           <Select value={selectedEmotion} onValueChange={(v) => setSelectedEmotion(v as keyof typeof EMOTIONS)}>
             <SelectTrigger className="w-[200px]">
               <SelectValue />
@@ -36,7 +38,7 @@ const ProgressionGenerator: React.FC<ProgressionGeneratorProps> = ({ selectedRoo
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={generateProgression} size="sm">Generate</Button>
+          <Button onClick={generateProgression} size="sm">{t('generate')}</Button>
         </div>
 
         {currentProgression.length > 0 && (

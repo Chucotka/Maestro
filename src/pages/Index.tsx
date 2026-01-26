@@ -4,22 +4,25 @@ import Piano from "@/components/Piano";
 import CircleOfFifths from "@/components/CircleOfFifths";
 import ProgressionGenerator from "@/components/ProgressionGenerator";
 import ArpeggioPlayer from "@/components/ArpeggioPlayer";
+import Metronome from "@/components/Metronome";
 import { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
 import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, romanToChord, getScaleNotes, getChordNotes } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, CAGED_SHAPES, romanToChord, getScaleNotes, getChordNotes } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 type InstrumentType = 'guitar' | 'piano' | 'clean' | 'distortion' | 'bass';
 
 const Index = () => {
+  const { t, language, setLanguage } = useI18n();
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [loadingInstruments, setLoadingInstruments] = useState<Set<InstrumentType>>(new Set());
   const [loadedInstruments, setLoadedInstruments] = useState<Set<InstrumentType>>(new Set());
@@ -27,7 +30,8 @@ const Index = () => {
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const [selectedChordName, setSelectedChordName] = useState<keyof typeof CHORDS>("Major");
-  const [viewMode, setViewMode] = useState<'scale' | 'chord'>('scale');
+  const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("E");
+  const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged'>('scale');
   const [volume, setVolume] = useState(0.8);
   const { theme, setTheme } = useTheme();
   
@@ -135,23 +139,25 @@ const Index = () => {
 
   const activeNotesForArpeggio = viewMode === 'scale'
     ? getScaleNotes(selectedRoot, SCALES[selectedScaleName])
-    : getChordNotes(selectedRoot, CHORDS[selectedChordName]);
+    : viewMode === 'chord'
+    ? getChordNotes(selectedRoot, CHORDS[selectedChordName])
+    : getChordNotes(selectedRoot, CHORDS['Major']);
 
   if (!isAudioEnabled) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-stone-100 dark:bg-slate-900 p-4">
         <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full max-w-md">
           <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">
-            {loadingInstruments.size > 0 ? "Loading High-Quality Sounds..." : "Audio Disabled"}
+            {loadingInstruments.size > 0 ? t('loadingInstruments') : t('audioDisabled')}
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">
             {loadingInstruments.size > 0
-              ? "Please wait while we load realistic instrument samples. This may take a few seconds."
-              : "Click the button to enable high-quality realistic audio for the interactive tools."}
+              ? t('loadingMessage')
+              : t('enableAudio')}
           </p>
           <Button onClick={enableAudio} size="lg" disabled={loadingInstruments.size > 0}>
             {loadingInstruments.size > 0 ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Music className="mr-2 h-5 w-5" />}
-            {loadingInstruments.size > 0 ? "Loading..." : "Enable Realistic Audio"}
+            {loadingInstruments.size > 0 ? t('loading') : t('enableAudio')}
           </Button>
         </div>
         <MadeWithDyad />
@@ -162,12 +168,29 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-start bg-stone-100 dark:bg-slate-900 p-4 transition-colors duration-300">
       <div className="w-full max-w-7xl mx-auto">
-        <h1 className="text-3xl md:text-4xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">Fret & Key Maestro</h1>
+        <div className="flex justify-between items-center mb-6">
+          <div className="w-24"></div> {/* Spacer */}
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">{t('title')}</h1>
+          <div className="flex gap-1 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+            <Button
+              variant={language === 'en' ? "default" : "ghost"}
+              size="sm"
+              className="h-8 px-2"
+              onClick={() => setLanguage('en')}
+            >EN</Button>
+            <Button
+              variant={language === 'ru' ? "default" : "ghost"}
+              size="sm"
+              className="h-8 px-2"
+              onClick={() => setLanguage('ru')}
+            >RU</Button>
+          </div>
+        </div>
         
         <div className="p-4 mb-6 bg-white dark:bg-slate-800/50 rounded-lg shadow-lg backdrop-blur-sm">
           <div className="flex flex-col md:flex-row flex-wrap gap-4 justify-center items-center">
             <div className="flex items-center gap-2">
-              <Label htmlFor="root-select" className="text-gray-700 dark:text-gray-300">Root Note:</Label>
+              <Label htmlFor="root-select" className="text-gray-700 dark:text-gray-300">{t('rootNote')}:</Label>
               <Select value={selectedRoot} onValueChange={setSelectedRoot}>
                 <SelectTrigger id="root-select" className="w-[120px]">
                   <SelectValue placeholder="Select Root" />
@@ -180,9 +203,9 @@ const Index = () => {
               </Select>
             </div>
 
-            {viewMode === 'scale' ? (
+            {viewMode === 'scale' && (
               <div className="flex items-center gap-2">
-                <Label htmlFor="scale-select" className="text-gray-700 dark:text-gray-300">Scale/Mode:</Label>
+                <Label htmlFor="scale-select" className="text-gray-700 dark:text-gray-300">{t('scaleMode')}:</Label>
                 <Select
                   value={selectedScaleName}
                   onValueChange={(value) => setSelectedScaleName(value as keyof typeof SCALES)}
@@ -192,14 +215,16 @@ const Index = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.keys(SCALES).map((scale) => (
-                      <SelectItem key={scale} value={scale}>{scale}</SelectItem>
+                      <SelectItem key={scale} value={scale}>{t(scale as any)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            ) : (
+            )}
+
+            {viewMode === 'chord' && (
               <div className="flex items-center gap-2">
-                <Label htmlFor="chord-select" className="text-gray-700 dark:text-gray-300">Chord Type:</Label>
+                <Label htmlFor="chord-select" className="text-gray-700 dark:text-gray-300">{t('chordType')}:</Label>
                 <Select
                   value={selectedChordName}
                   onValueChange={(value) => setSelectedChordName(value as keyof typeof CHORDS)}
@@ -209,7 +234,26 @@ const Index = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.keys(CHORDS).map((chord) => (
-                      <SelectItem key={chord} value={chord}>{chord}</SelectItem>
+                      <SelectItem key={chord} value={chord}>{t(chord as any)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {viewMode === 'caged' && (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="caged-select" className="text-gray-700 dark:text-gray-300">{t('cagedShape')}:</Label>
+                <Select
+                  value={selectedCagedShape}
+                  onValueChange={(value) => setSelectedCagedShape(value as keyof typeof CAGED_SHAPES)}
+                >
+                  <SelectTrigger id="caged-select" className="w-[120px]">
+                    <SelectValue placeholder="Select Shape" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(CAGED_SHAPES).map((shape) => (
+                      <SelectItem key={shape} value={shape}>{shape} Shape</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -223,19 +267,19 @@ const Index = () => {
               className="border border-gray-200 dark:border-gray-700 rounded-md flex-wrap"
             >
               <ToggleGroupItem value="guitar" aria-label="Select acoustic guitar">
-                <Guitar className="h-4 w-4 mr-2" /> Acoustic
+                <Guitar className="h-4 w-4 mr-2" /> {t('acoustic')}
               </ToggleGroupItem>
               <ToggleGroupItem value="clean" aria-label="Select clean guitar">
-                <Volume2 className="h-4 w-4 mr-2" /> Clean
+                <Volume2 className="h-4 w-4 mr-2" /> {t('clean')}
               </ToggleGroupItem>
               <ToggleGroupItem value="distortion" aria-label="Select distortion guitar">
-                <Zap className="h-4 w-4 mr-2" /> Distortion
+                <Zap className="h-4 w-4 mr-2" /> {t('distortion')}
               </ToggleGroupItem>
               <ToggleGroupItem value="bass" aria-label="Select bass">
-                <Music className="h-4 w-4 mr-2" /> Bass
+                <Music className="h-4 w-4 mr-2" /> {t('bass')}
               </ToggleGroupItem>
               <ToggleGroupItem value="piano" aria-label="Select piano">
-                <PianoIcon className="h-4 w-4 mr-2" /> Piano
+                <PianoIcon className="h-4 w-4 mr-2" /> {t('piano')}
               </ToggleGroupItem>
             </ToggleGroup>
             
@@ -252,7 +296,7 @@ const Index = () => {
 
             <div className="flex items-center space-x-2">
               <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
-              <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">Dark</Label>
+              <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">{t('dark')}</Label>
             </div>
           </div>
         </div>
@@ -262,7 +306,7 @@ const Index = () => {
             {isSelectedLoading && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
                 <Loader2 className="h-10 w-10 animate-spin text-sky-500 mb-2" />
-                <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">Loading Instrument...</p>
+                <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('loading')}</p>
               </div>
             )}
 
@@ -271,8 +315,8 @@ const Index = () => {
                 selectedRoot={selectedRoot}
                 selectedScaleName={selectedScaleName}
                 selectedChordName={selectedChordName}
-                mode={viewMode}
-                onModeChange={setViewMode}
+                mode={viewMode === 'caged' ? 'chord' : viewMode}
+                onModeChange={(mode) => setViewMode(mode as any)}
                 sampler={samplers.current.piano || null}
               />
             ) : (
@@ -280,6 +324,7 @@ const Index = () => {
                 selectedRoot={selectedRoot}
                 selectedScaleName={selectedScaleName}
                 selectedChordName={selectedChordName}
+                selectedCagedShape={selectedCagedShape}
                 mode={viewMode}
                 onModeChange={setViewMode}
                 instrumentType={selectedInstrument}
@@ -289,11 +334,12 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 flex flex-col gap-6">
               <CircleOfFifths
                 selectedRoot={selectedRoot}
                 onNoteSelect={setSelectedRoot}
               />
+              <Metronome />
             </div>
 
             <div className="lg:col-span-2 flex flex-col gap-6">

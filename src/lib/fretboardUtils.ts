@@ -152,6 +152,85 @@ export const getChordNotes = (rootNote: string, chordIntervals: number[]): strin
   return Array.from(notes);
 };
 
+export interface CAGEDNote {
+  string: number;
+  relativeFret: number;
+  interval: string;
+}
+
+export const CAGED_SHAPES: Record<string, CAGEDNote[]> = {
+  'C': [
+    { string: 5, relativeFret: 3, interval: 'R' },
+    { string: 4, relativeFret: 2, interval: '3' },
+    { string: 3, relativeFret: 0, interval: '5' },
+    { string: 2, relativeFret: 1, interval: 'R' },
+    { string: 1, relativeFret: 0, interval: '3' },
+  ],
+  'A': [
+    { string: 5, relativeFret: 0, interval: 'R' },
+    { string: 4, relativeFret: 2, interval: '5' },
+    { string: 3, relativeFret: 2, interval: 'R' },
+    { string: 2, relativeFret: 2, interval: '3' },
+    { string: 1, relativeFret: 0, interval: '5' },
+  ],
+  'G': [
+    { string: 6, relativeFret: 3, interval: 'R' },
+    { string: 5, relativeFret: 2, interval: '3' },
+    { string: 4, relativeFret: 0, interval: '5' },
+    { string: 3, relativeFret: 0, interval: 'R' },
+    { string: 2, relativeFret: 0, interval: '3' },
+    { string: 1, relativeFret: 3, interval: 'R' },
+  ],
+  'E': [
+    { string: 6, relativeFret: 0, interval: 'R' },
+    { string: 5, relativeFret: 2, interval: '5' },
+    { string: 4, relativeFret: 2, interval: 'R' },
+    { string: 3, relativeFret: 1, interval: '3' },
+    { string: 2, relativeFret: 0, interval: '5' },
+    { string: 1, relativeFret: 0, interval: 'R' },
+  ],
+  'D': [
+    { string: 4, relativeFret: 0, interval: 'R' },
+    { string: 3, relativeFret: 2, interval: '5' },
+    { string: 2, relativeFret: 3, interval: 'R' },
+    { string: 1, relativeFret: 2, interval: '3' },
+  ],
+};
+
+export const getCAGEDNotes = (root: string, shapeName: string, tuning: string[]): { string: number, fret: number, noteName: string, interval: string }[] => {
+  const shape = CAGED_SHAPES[shapeName];
+  if (!shape) return [];
+
+  const rootString = shape.find(n => n.interval === 'R')?.string || 6;
+  const tuningStrings = [...tuning].reverse(); // from [E2...E4] to [E4...E2]
+  const openStringNote = tuningStrings[rootString - 1];
+
+  const openNoteName = openStringNote.match(/[A-G]#?/)?.[0] || '';
+  const openNoteIndex = ALL_NOTES.indexOf(openNoteName);
+  const rootNoteIndex = ALL_NOTES.indexOf(root);
+
+  let rootFret = (rootNoteIndex - openNoteIndex + 12) % 12;
+
+  const shapeRootRelativeFret = shape.find(n => n.interval === 'R')?.relativeFret || 0;
+  let baseFret = rootFret - shapeRootRelativeFret;
+  // We want to keep it in a reasonable range, e.g. 0-12
+  while (baseFret < 0) baseFret += 12;
+
+  return shape.map(n => {
+    const sIdx = tuningStrings.length - n.string;
+    const sOpenNote = tuning[sIdx].match(/[A-G]#?/)?.[0] || '';
+    const absFret = baseFret + n.relativeFret;
+    const noteName = ALL_NOTES[(ALL_NOTES.indexOf(sOpenNote) + absFret) % 12];
+
+    return {
+      string: n.string,
+      fret: absFret,
+      noteName,
+      interval: n.interval
+    };
+  });
+};
+
 export const EMOTIONS = {
   "Happy / Joyful": {
     progressions: [

@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useI18n } from '@/lib/i18n';
 
 interface PianoProps {
   selectedRoot: string;
@@ -48,6 +49,7 @@ const Piano: React.FC<PianoProps> = ({
   sampler,
   onModeChange
 }) => {
+  const { t } = useI18n();
   const [showNoteNames, setShowNoteNames] = useState(false);
   const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
   const [keyDimensions, setKeyDimensions] = useState({ whiteKeyWidth: 20, blackKeyWidth: 12 });
@@ -97,14 +99,14 @@ const Piano: React.FC<PianoProps> = ({
       <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6 justify-center items-center">
         <Tabs value={mode} onValueChange={(v) => onModeChange?.(v as 'scale' | 'chord')} className="w-[200px]">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="scale">Scales</TabsTrigger>
-            <TabsTrigger value="chord">Chords</TabsTrigger>
+            <TabsTrigger value="scale">{t('scales')}</TabsTrigger>
+            <TabsTrigger value="chord">{t('chords')}</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="flex items-center space-x-2">
           <Switch id="show-note-names-piano" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
-          <Label htmlFor="show-note-names-piano" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
+          <Label htmlFor="show-note-names-piano" className="text-gray-700 dark:text-gray-300">{t('showNoteNames')}</Label>
         </div>
       </div>
 
@@ -180,7 +182,7 @@ const Piano: React.FC<PianoProps> = ({
 
       <div className="mt-8 text-center">
         <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">
-          Current {mode === 'scale' ? 'Scale' : 'Chord'} Notes:
+          {mode === 'scale' ? t('scaleNotes') : t('chordNotes')}
         </h3>
         <p className="text-lg text-gray-700 dark:text-gray-300">{activeNotesList.join(", ")}</p>
       </div>

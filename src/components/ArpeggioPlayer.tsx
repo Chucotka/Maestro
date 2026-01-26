@@ -3,6 +3,7 @@ import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
 import { Play, Square, FastForward, Rewind } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
+import { useI18n } from '@/lib/i18n';
 
 interface ArpeggioPlayerProps {
   notes: string[]; // Note names like ["C", "E", "G"]
@@ -10,6 +11,7 @@ interface ArpeggioPlayerProps {
 }
 
 const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler }) => {
+  const { t } = useI18n();
   const [isPlaying, setIsPlaying] = useState(false);
   const [tempo, setTempo] = useState(120);
   const [direction, setDirection] = useState<'up' | 'down' | 'updown'>('up');
@@ -78,8 +80,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler }) => {
 
         <div className="flex flex-col gap-1 w-32">
           <div className="flex justify-between text-xs dark:text-gray-400">
-            <span>Tempo</span>
-            <span>{tempo} BPM</span>
+            <span>{t('tempo')}</span>
+            <span>{tempo} {t('bpm')}</span>
           </div>
           <Slider
             value={[tempo]}
@@ -95,14 +97,14 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler }) => {
             size="sm"
             onClick={() => setDirection('up')}
           >
-            Up
+            {t('up')}
           </Button>
           <Button
             variant={direction === 'down' ? "default" : "outline"}
             size="sm"
             onClick={() => setDirection('down')}
           >
-            Down
+            {t('down')}
           </Button>
         </div>
       </div>
