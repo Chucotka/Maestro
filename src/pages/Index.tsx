@@ -19,7 +19,8 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, CAGED_SHAPES, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes } from "@/lib/fretboardUtils";
+import { Input } from "@/components/ui/input";
+import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, CAGED_SHAPES, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
@@ -29,8 +30,33 @@ import { useI18n } from "@/lib/i18n";
 
 type InstrumentType = 'guitar' | 'piano' | 'clean' | 'distortion' | 'bass';
 
+const PIANO_URLS = {
+  "A0": "A0.mp3", "C1": "C1.mp3", "Eb1": "Eb1.mp3", "Gb1": "Gb1.mp3",
+  "A1": "A1.mp3", "C2": "C2.mp3", "Eb2": "Eb2.mp3", "Gb2": "Gb2.mp3",
+  "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
+  "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
+  "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
+  "A5": "A5.mp3", "C6": "C6.mp3", "Eb6": "Eb6.mp3", "Gb6": "Gb6.mp3",
+  "A6": "A6.mp3", "C7": "C7.mp3", "Eb7": "Eb7.mp3", "Gb7": "Gb7.mp3",
+  "A7": "A7.mp3", "C8": "C8.mp3"
+};
+
+const GUITAR_URLS = {
+  "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
+  "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
+  "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
+  "A5": "A5.mp3", "C6": "C6.mp3"
+};
+
+const BASS_URLS = {
+  "E1": "E1.mp3", "G1": "G1.mp3", "Bb1": "Bb1.mp3", "Db2": "Db2.mp3",
+  "E2": "E2.mp3", "G2": "G2.mp3", "Bb2": "Bb2.mp3", "Db3": "Db3.mp3",
+  "E3": "E3.mp3", "G3": "G3.mp3"
+};
+
 const Index = () => {
   const { t, language, setLanguage } = useI18n();
+  const t_safe = (key: string) => t(key as any);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [loadingInstruments, setLoadingInstruments] = useState<Set<InstrumentType>>(new Set());
   const [loadedInstruments, setLoadedInstruments] = useState<Set<InstrumentType>>(new Set());
@@ -40,35 +66,14 @@ const Index = () => {
   const [selectedChordName, setSelectedChordName] = useState<keyof typeof CHORDS>("Major");
   const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("E");
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
-  const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged'>('scale');
+  const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual'>('scale');
   const [volume, setVolume] = useState(0.8);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quizTarget, setQuizTarget] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   
   const samplers = useRef<Partial<Record<InstrumentType, Tone.Sampler>>>({});
-
-  const pianoUrls = {
-    "A0": "A0.mp3", "C1": "C1.mp3", "Eb1": "Eb1.mp3", "Gb1": "Gb1.mp3",
-    "A1": "A1.mp3", "C2": "C2.mp3", "Eb2": "Eb2.mp3", "Gb2": "Gb2.mp3",
-    "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
-    "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
-    "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
-    "A5": "A5.mp3", "C6": "C6.mp3", "Eb6": "Eb6.mp3", "Gb6": "Gb6.mp3",
-    "A6": "A6.mp3", "C7": "C7.mp3", "Eb7": "Eb7.mp3", "Gb7": "Gb7.mp3",
-    "A7": "A7.mp3", "C8": "C8.mp3"
-  };
-
-  const guitarUrls = {
-    "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
-    "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
-    "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
-    "A5": "A5.mp3", "C6": "C6.mp3"
-  };
-
-  const bassUrls = {
-    "E1": "E1.mp3", "G1": "G1.mp3", "Bb1": "Bb1.mp3", "Db2": "Db2.mp3",
-    "E2": "E2.mp3", "G2": "G2.mp3", "Bb2": "Bb2.mp3", "Db3": "Db3.mp3",
-    "E3": "E3.mp3", "G3": "G3.mp3"
-  };
+  const arpeggioRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const currentSamplers = samplers.current;
@@ -87,7 +92,7 @@ const Index = () => {
     setLoadingInstruments(prev => new Set(prev).add(inst));
 
     try {
-      const urls = inst === 'piano' ? pianoUrls : inst === 'bass' ? bassUrls : guitarUrls;
+      const urls = inst === 'piano' ? PIANO_URLS : inst === 'bass' ? BASS_URLS : GUITAR_URLS;
       let baseUrl = "";
 
       switch(inst) {
@@ -142,7 +147,7 @@ const Index = () => {
     if (isAudioEnabled) {
       loadInstrument(selectedInstrument);
     }
-  }, [selectedInstrument, isAudioEnabled]);
+  }, [selectedInstrument, isAudioEnabled, loadInstrument]);
 
   const isSelectedLoading = loadingInstruments.has(selectedInstrument);
 
@@ -181,20 +186,20 @@ const Index = () => {
         <div className="flex items-center justify-center gap-1 md:gap-4 min-w-max landscape:gap-2">
           {[
             { id: 'chords', label: t('chords'), action: () => setViewMode('chord') },
-            { id: 'triads', label: t('triads') },
-            { id: 'quiz', label: t('quiz') },
-            { id: 'finder', label: t('finder') },
+            { id: 'triads', label: t('triads'), action: () => { setViewMode('chord'); setSelectedChordName('Major'); toast.info("Triad mode active"); } },
+            { id: 'quiz', label: t('quiz'), action: () => setViewMode('quiz') },
+            { id: 'finder', label: t('finder'), action: () => setViewMode('finder') },
             { id: 'scales', label: t('scales'), action: () => setViewMode('scale') },
             { id: 'caged', label: t('caged'), action: () => setViewMode('caged') },
-            { id: 'arpeggios', label: t('arpeggios') },
-            { id: 'notes', label: t('notes') },
+            { id: 'arpeggios', label: t('arpeggios'), action: () => { arpeggioRef.current?.scrollIntoView({ behavior: 'smooth' }); toast.info("Arpeggiator"); } },
+            { id: 'notes', label: t('notes'), action: () => setViewMode('notes') },
             {
               id: 'tunings',
               label: t('tunings'),
               dropdown: GUITAR_TUNINGS,
               onSelect: (val: string) => setSelectedTuningName(val)
             },
-            { id: 'virtual', label: t('virtual') }
+            { id: 'virtual', label: t('virtual'), action: () => setViewMode('virtual') }
           ].map((item) => (
             item.dropdown ? (
               <DropdownMenu key={item.id}>
@@ -229,20 +234,21 @@ const Index = () => {
             )
           ))}
           <div className="flex-grow"></div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white">
-                <Guitar className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300">
-              <DropdownMenuItem onClick={() => setSelectedInstrument('guitar')}>{t('acoustic')}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedInstrument('clean')}>{t('clean')}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedInstrument('distortion')}>{t('distortion')}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedInstrument('bass')}>{t('bass')}</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedInstrument('piano')}>{t('piano')}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2 px-2 border-l border-stone-700 ml-2">
+            <Label className="text-[10px] text-stone-500 uppercase font-bold hidden md:block">{t('instrument')}</Label>
+            <Select value={selectedInstrument} onValueChange={(val) => setSelectedInstrument(val as InstrumentType)}>
+              <SelectTrigger className="w-[120px] h-8 bg-[#2a2a2a] border-stone-700 text-xs text-gray-300">
+                <SelectValue placeholder={t('instrument')} />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1e1e1e] border-stone-800 text-gray-300">
+                <SelectItem value="guitar">{t('acoustic')}</SelectItem>
+                <SelectItem value="clean">{t('clean')}</SelectItem>
+                <SelectItem value="distortion">{t('distortion')}</SelectItem>
+                <SelectItem value="bass">{t('bass')}</SelectItem>
+                <SelectItem value="piano">{t('piano')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -284,6 +290,80 @@ const Index = () => {
         </div>
 
         <div className="flex flex-col gap-4 landscape:gap-2">
+          {(viewMode === 'quiz' || viewMode === 'finder') && (
+            <div className="w-full flex justify-center mb-2">
+              {viewMode === 'quiz' && (
+                <div className="bg-[#1e1e1e] p-4 rounded-lg border border-orange-500 w-full max-w-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <p className="text-white font-bold">{t('find_note_quiz')}:</p>
+                    {quizTarget ? (
+                      <div className="text-2xl font-bold text-orange-500 animate-pulse">
+                        {quizTarget}
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 italic">{t('start_quiz_desc')}</span>
+                    )}
+                  </div>
+                  <Button onClick={() => {
+                    const notes = ALL_NOTES;
+                    const randomNote = notes[Math.floor(Math.random() * notes.length)];
+                    setQuizTarget(randomNote);
+                  }} className="bg-orange-600 hover:bg-orange-700">
+                    {quizTarget ? t('next_note') : t('start_quiz')}
+                  </Button>
+                </div>
+              )}
+
+              {viewMode === 'finder' && (
+                <div className="bg-[#1e1e1e] p-4 rounded-lg border border-blue-500 w-full max-w-2xl">
+                  <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                    <div className="flex-grow w-full">
+                      <Label className="text-white mb-2 block">{t('enter_notes')}</Label>
+                      <Input
+                        placeholder="C E G"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-stone-800 border-stone-700 text-white"
+                      />
+                    </div>
+                    {searchQuery && (
+                      <div className="w-full md:w-64 max-h-[150px] overflow-y-auto bg-black/40 p-2 rounded">
+                        <h4 className="text-xs font-semibold text-gray-400 mb-1 uppercase">{t('matching_results')}</h4>
+                        <div className="flex flex-col gap-1">
+                          {(() => {
+                            const notes = searchQuery.split(/[\s,]+/).filter(Boolean);
+                            const results = findScalesByNotes(notes);
+                            if (results.length === 0) return <p className="text-[10px] text-muted-foreground">{t('no_matches')}</p>;
+                            return results.map((res, i) => (
+                              <Button
+                                key={i}
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start h-7 text-xs text-gray-300 hover:text-white hover:bg-stone-700 px-2"
+                                onClick={() => {
+                                  setSelectedRoot(res.root);
+                                  if (SCALES[res.type as keyof typeof SCALES]) {
+                                    setViewMode('scale');
+                                    setSelectedScaleName(res.type as any);
+                                  } else {
+                                    setViewMode('chord');
+                                    setSelectedChordName(res.type as any);
+                                  }
+                                }}
+                              >
+                                {res.root} {t(res.type as any)}
+                              </Button>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="relative w-full border border-stone-800 rounded-lg overflow-hidden bg-[#1a1a1a] shadow-inner landscape:max-h-[50vh]">
             {isSelectedLoading && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
@@ -297,23 +377,50 @@ const Index = () => {
                 selectedRoot={selectedRoot}
                 selectedScaleName={selectedScaleName}
                 selectedChordName={selectedChordName}
-                mode={viewMode === 'caged' ? 'chord' : viewMode as 'scale' | 'chord'}
-                onModeChange={(mode) => setViewMode(mode as 'scale' | 'chord' | 'caged')}
+                mode={(viewMode === 'chord' || viewMode === 'scale') ? viewMode : 'scale'}
+                onModeChange={(mode) => setViewMode(mode as any)}
                 sampler={samplers.current.piano || null}
               />
             ) : (
-              <Fretboard
-                selectedRoot={selectedRoot}
-                selectedScaleName={selectedScaleName}
-                selectedChordName={selectedChordName}
-                selectedCagedShape={selectedCagedShape}
-                selectedTuningName={selectedTuningName}
-                onTuningChange={setSelectedTuningName}
-                mode={viewMode}
-                onModeChange={setViewMode}
-                instrumentType={selectedInstrument}
-                sampler={samplers.current[selectedInstrument] || null}
-              />
+              <div className="relative">
+                <Fretboard
+                  selectedRoot={selectedRoot}
+                  selectedScaleName={selectedScaleName}
+                  selectedChordName={selectedChordName}
+                  selectedCagedShape={selectedCagedShape}
+                  selectedTuningName={selectedTuningName}
+                  onTuningChange={setSelectedTuningName}
+                  mode={viewMode}
+                  onModeChange={setViewMode}
+                  instrumentType={selectedInstrument}
+                  sampler={samplers.current[selectedInstrument] || null}
+                  onNoteClick={(noteName) => {
+                    if (viewMode === 'quiz' && quizTarget) {
+                      if (noteName === quizTarget) {
+                        toast.success("Correct!");
+                        setQuizTarget(null);
+                      } else {
+                        toast.error(`Wrong! That was ${noteName}`);
+                      }
+                    }
+                  }}
+                />
+
+                {viewMode === 'notes' && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-8 text-center">
+                    <div className="bg-[#1e1e1e] border border-stone-800 p-8 rounded-xl max-w-lg shadow-2xl">
+                      <Music className="h-12 w-12 text-[#b06a3b] mx-auto mb-4" />
+                      <h3 className="text-2xl font-bold text-white mb-4">{t('notes')}</h3>
+                      <p className="text-gray-400 leading-relaxed mb-6">
+                        {t('notes_explanation')}
+                      </p>
+                      <Button onClick={() => setViewMode('scale')} className="bg-[#b06a3b] hover:bg-[#8e5630]">
+                        Got it!
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -325,10 +432,10 @@ const Index = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 landscape:p-2 landscape:gap-2">
             <div className="flex flex-col">
               <h2 className="text-3xl font-bold text-[#b06a3b] landscape:text-xl">
-                {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` : `${selectedRoot} ${t(selectedScaleName as any)}`}
+                {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` : `${selectedRoot} ${t_safe(selectedScaleName)}`}
               </h2>
               <p className="text-xl text-stone-500 font-mono landscape:text-sm">
-                {activeNotesForArpeggio.join(' . ')} / {viewMode === 'chord' ? CHORDS[selectedChordName].join(',') : SCALES[selectedScaleName].join(',')}
+                {activeNotesForArpeggio.join(' . ')} / {viewMode === 'chord' ? CHORDS[selectedChordName].join(',') : viewMode === 'scale' ? SCALES[selectedScaleName].join(',') : 'CAGED'}
               </p>
             </div>
 
@@ -346,7 +453,7 @@ const Index = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800">
-                  <Music className="mr-2 h-5 w-5" /> {viewMode === 'chord' ? t('chordType') : t('scaleMode')}
+                  <Music className="mr-2 h-5 w-5" /> {viewMode === 'chord' ? t('chordType') : viewMode === 'scale' ? t('scaleMode') : t('cagedShape')}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[300px] overflow-y-auto">
@@ -356,9 +463,15 @@ const Index = () => {
                         {c}
                       </DropdownMenuItem>
                     ))
-                  : Object.keys(SCALES).map(s => (
+                  : viewMode === 'scale'
+                  ? Object.keys(SCALES).map(s => (
                       <DropdownMenuItem key={s} onClick={() => setSelectedScaleName(s as keyof typeof SCALES)} className="hover:bg-stone-800 focus:bg-stone-800">
-                        {t(s as keyof typeof SCALES)}
+                        {t_safe(s)}
+                      </DropdownMenuItem>
+                    ))
+                  : Object.keys(CAGED_SHAPES).map(sh => (
+                      <DropdownMenuItem key={sh} onClick={() => setSelectedCagedShape(sh as keyof typeof CAGED_SHAPES)} className="hover:bg-stone-800 focus:bg-stone-800">
+                        Shape {sh}
                       </DropdownMenuItem>
                     ))
                 }
@@ -368,7 +481,7 @@ const Index = () => {
             <Button
               variant="outline"
               className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800"
-              onClick={() => toast.info(viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}: ${activeNotesForArpeggio.join(', ')}` : `${selectedRoot} ${t(selectedScaleName as any)}: ${activeNotesForArpeggio.join(', ')}`)}
+              onClick={() => toast.info(viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}: ${activeNotesForArpeggio.join(', ')}` : `${selectedRoot} ${t_safe(selectedScaleName)}: ${activeNotesForArpeggio.join(', ')}`)}
             >
               <Zap className="mr-2 h-5 w-5" /> Info
             </Button>
@@ -392,7 +505,7 @@ const Index = () => {
               <Metronome />
             </div>
 
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6" ref={arpeggioRef}>
               <ArpeggioPlayer
                 notes={activeNotesForArpeggio}
                 sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}

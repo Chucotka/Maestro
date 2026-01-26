@@ -152,6 +152,33 @@ export const getChordNotes = (rootNote: string, chordIntervals: number[]): strin
   return Array.from(notes);
 };
 
+export const findScalesByNotes = (inputNotes: string[]) => {
+  const normalizedInput = inputNotes.map(n => n.toUpperCase().trim());
+  const results: { root: string, type: string, notes: string[] }[] = [];
+
+  if (normalizedInput.length === 0) return [];
+
+  ALL_NOTES.forEach(root => {
+    // Check Scales
+    Object.entries(SCALES).forEach(([scaleType, intervals]) => {
+      const scaleNotes = getScaleNotes(root, intervals);
+      if (normalizedInput.every(n => scaleNotes.includes(n))) {
+        results.push({ root, type: scaleType, notes: scaleNotes });
+      }
+    });
+
+    // Check Chords
+    Object.entries(CHORDS).forEach(([chordType, intervals]) => {
+      const chordNotes = getChordNotes(root, intervals);
+      if (normalizedInput.every(n => chordNotes.includes(n))) {
+        results.push({ root, type: chordType, notes: chordNotes });
+      }
+    });
+  });
+
+  return results.slice(0, 10); // Limit to 10 results
+};
+
 export interface CAGEDNote {
   string: number;
   relativeFret: number;

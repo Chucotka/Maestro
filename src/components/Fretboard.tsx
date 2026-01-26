@@ -25,10 +25,11 @@ interface FretboardProps {
   selectedCagedShape?: keyof typeof CAGED_SHAPES;
   selectedTuningName: string;
   onTuningChange: (tuning: string) => void;
-  mode: 'scale' | 'chord' | 'caged';
+  mode: string;
   sampler: Tone.Sampler | null;
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
-  onModeChange?: (mode: 'scale' | 'chord' | 'caged') => void;
+  onModeChange?: (mode: any) => void;
+  onNoteClick?: (noteName: string, noteWithOctave: string) => void;
 }
 
 const Fretboard: React.FC<FretboardProps> = ({
@@ -163,11 +164,14 @@ const Fretboard: React.FC<FretboardProps> = ({
       }
     });
     return notes;
-  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes]);
+  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, selectedChordName, selectedScaleName]);
 
-  const handleNoteClick = (noteWithOctave: string) => {
+  const handleNoteClick = (noteName: string, noteWithOctave: string) => {
     if (sampler && Tone.context.state === 'running') {
       sampler.triggerAttackRelease(noteWithOctave, "2n");
+    }
+    if (onNoteClick) {
+      onNoteClick(noteName, noteWithOctave);
     }
   };
 
@@ -247,7 +251,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                         isRoot={openNote.isRoot}
                         isHighlighted={openNote.isScaleNote}
                         size={fretDimensions.markerSize * 0.85}
-                        onClick={() => handleNoteClick(openNote.noteWithOctave)}
+                        onClick={() => handleNoteClick(openNote.noteName, openNote.noteWithOctave)}
                       />
                     </div>
                   ) : (
@@ -336,7 +340,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                       isRoot={note.isRoot}
                       isHighlighted={note.isScaleNote}
                       size={fretDimensions.markerSize}
-                      onClick={() => handleNoteClick(note.noteWithOctave)}
+                      onClick={() => handleNoteClick(note.noteName, note.noteWithOctave)}
                     />
                   </div>
                 );

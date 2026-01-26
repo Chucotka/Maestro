@@ -72,6 +72,15 @@ const translations = {
     min7: 'Minor 7th',
     dim: 'Diminished',
     aug: 'Augmented',
+    find_note_quiz: 'Note Discovery Quiz',
+    find_note: 'Find this note',
+    start_quiz: 'Start Quiz',
+    start_quiz_desc: 'Press start to begin note finding game',
+    next_note: 'Next Note',
+    enter_notes: 'Enter notes separated by spaces (e.g., C E G)',
+    notes_explanation: 'Understanding intervals and their positions on the fretboard is key to mastering the instrument. Toggle between Notes and Degrees to see the relationship.',
+    matching_results: 'Matching Scales/Chords:',
+    no_matches: 'No exact matches found.',
   },
   ru: {
     title: 'Мастер Ладов и Клавиш',
@@ -142,6 +151,15 @@ const translations = {
     min7: 'Малый минорный септаккорд (min7)',
     dim: 'Уменьшенный',
     aug: 'Увеличенный',
+    find_note_quiz: 'Квиз: Найдите ноту на грифе',
+    find_note: 'Найдите ноту',
+    start_quiz: 'Начать квиз',
+    start_quiz_desc: 'Нажмите старт, чтобы начать игру',
+    next_note: 'Следующая нота',
+    enter_notes: 'Введите ноты через пробел (например: C E G)',
+    notes_explanation: 'Понимание интервалов и их расположения на грифе — ключ к мастерству. Переключайтесь между Названиями и Ступенями, чтобы видеть связи.',
+    matching_results: 'Подходящие гаммы/аккорды:',
+    no_matches: 'Точных совпадений не найдено.',
   }
 };
 
