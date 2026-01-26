@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getNoteAtFret, getScaleNotes, getChordNotes, getCAGEDNotes, GUITAR_TUNINGS, SCALES, CHORDS, CAGED_SHAPES } from '@/lib/fretboardUtils';
+import { getNoteAtFret, getScaleNotes, getChordNotes, getCAGEDNotes, getIntervalName, ALL_NOTES, GUITAR_TUNINGS, SCALES, CHORDS, CAGED_SHAPES } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -130,9 +130,23 @@ const Fretboard: React.FC<FretboardProps> = ({
             sequenceNumber = cagedNote.interval;
           }
         } else {
-          const sequenceIndex = activeNotesList.indexOf(noteName);
-          isScaleNote = sequenceIndex !== -1;
-          sequenceNumber = isScaleNote ? (sequenceIndex + 1) : null;
+          isScaleNote = activeNotesList.includes(noteName);
+          if (isScaleNote) {
+            const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
+            const rootIndex = ALL_NOTES.indexOf(selectedRoot);
+
+            // Try to find the original interval to preserve extensions like 9, 11, 13
+            const matchingInterval = intervals.find(i => {
+              const nIdx = (rootIndex + i) % 12;
+              return ALL_NOTES[nIdx] === noteName;
+            });
+
+            const semitones = matchingInterval !== undefined
+              ? matchingInterval
+              : (ALL_NOTES.indexOf(noteName) - rootIndex + 12) % 12;
+
+            sequenceNumber = getIntervalName(semitones);
+          }
         }
 
         const isRoot = isScaleNote && noteName === selectedRoot;
@@ -159,6 +173,19 @@ const Fretboard: React.FC<FretboardProps> = ({
 
   return (
     <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300 overflow-hidden">
+      <div className="flex flex-wrap items-center gap-4 mb-2 px-2">
+        <div className="flex items-center space-x-2">
+          <Switch id="show-notes" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
+          <Label htmlFor="show-notes" className="text-xs text-gray-300 uppercase font-bold">{t('notes')}</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch id="show-all" checked={showAllNotes} onCheckedChange={setShowAllNotes} />
+          <Label htmlFor="show-all" className="text-xs text-gray-300 uppercase font-bold">{t('allNotes')}</Label>
+        </div>
+        <div className="text-[10px] text-[#b06a3b] font-mono ml-auto">
+          {mode.toUpperCase()} MODE
+        </div>
+      </div>
       <ScrollArea className="w-full whitespace-nowrap border-none">
         <div className="min-w-[1000px] p-4">
         <div className="flex w-full">

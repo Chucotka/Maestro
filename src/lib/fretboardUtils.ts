@@ -209,7 +209,7 @@ export const getCAGEDNotes = (root: string, shapeName: string, tuning: string[])
   const openNoteIndex = ALL_NOTES.indexOf(openNoteName);
   const rootNoteIndex = ALL_NOTES.indexOf(root);
 
-  let rootFret = (rootNoteIndex - openNoteIndex + 12) % 12;
+  const rootFret = (rootNoteIndex - openNoteIndex + 12) % 12;
 
   const shapeRootRelativeFret = shape.find(n => n.interval === 'R')?.relativeFret || 0;
   let baseFret = rootFret - shapeRootRelativeFret;
@@ -314,4 +314,32 @@ export const romanToChord = (roman: string, rootNote: string, isMajorKey: boolea
     root: ALL_NOTES[chordRootIndex],
     type: info.type
   };
+};
+
+/**
+ * Returns a musical interval name for a given semitone offset from root.
+ */
+export const getIntervalName = (semitones: number): string => {
+  const norm = semitones % 12;
+  const names: Record<number, string> = {
+    0: 'R',
+    1: 'b2',
+    2: '2',
+    3: 'b3',
+    4: '3',
+    5: '4',
+    6: 'b5',
+    7: '5',
+    8: 'b6',
+    9: '6',
+    10: 'b7',
+    11: '7'
+  };
+
+  // Special handling for extensions if needed (e.g., 9, 11, 13)
+  if (semitones === 14) return '9';
+  if (semitones === 17) return '11';
+  if (semitones === 21) return '13';
+
+  return names[norm] || 'R';
 };

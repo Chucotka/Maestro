@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getScaleNotes, getChordNotes, SCALES, CHORDS } from '@/lib/fretboardUtils';
+import { getScaleNotes, getChordNotes, getIntervalName, ALL_NOTES, SCALES, CHORDS } from '@/lib/fretboardUtils';
 import { cn } from '@/lib/utils';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -51,6 +51,7 @@ const Piano: React.FC<PianoProps> = ({
 }) => {
   const { t } = useI18n();
   const [showNoteNames, setShowNoteNames] = useState(false);
+  const [showDegrees, setShowDegrees] = useState(true);
   const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
   const [keyDimensions, setKeyDimensions] = useState({ whiteKeyWidth: 20, blackKeyWidth: 12 });
   const pianoContainerRef = useRef<HTMLDivElement>(null);
@@ -105,6 +106,17 @@ const Piano: React.FC<PianoProps> = ({
                 {whiteKeys.map(key => {
                   const isHighlighted = activeNotesList.includes(key.note);
                   const isRoot = isHighlighted && key.note === selectedRoot;
+
+                  let label = '';
+                  if (showNoteNames) label = key.note;
+                  else if (showDegrees && isHighlighted) {
+                    const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
+                    const rootIndex = ALL_NOTES.indexOf(selectedRoot);
+                    const matchingInterval = intervals.find(i => (rootIndex + i) % 12 === ALL_NOTES.indexOf(key.note));
+                    const semitones = matchingInterval !== undefined ? matchingInterval : (ALL_NOTES.indexOf(key.note) - rootIndex + 12) % 12;
+                    label = getIntervalName(semitones);
+                  }
+
                   return (
                     <button
                       key={key.noteWithOctave}
@@ -117,7 +129,7 @@ const Piano: React.FC<PianoProps> = ({
                       style={{ width: `${keyDimensions.whiteKeyWidth}px`, backgroundColor: '#e5d5c0' }}
                     >
                       <span className={cn('font-bold select-none text-black', { 'text-xs': keyDimensions.whiteKeyWidth < 28 }, isHighlighted && { 'text-[#b06a3b]': isRoot, 'text-stone-800': !isRoot })}>
-                        {showNoteNames ? key.note : ''}
+                        {label}
                       </span>
                     </button>
                   );
@@ -136,6 +148,16 @@ const Piano: React.FC<PianoProps> = ({
 
                 const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.note === precedingWhiteNote && wk.octave === key.octave);
 
+                let label = '';
+                if (showNoteNames) label = key.note;
+                else if (showDegrees && isHighlighted) {
+                  const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
+                  const rootIndex = ALL_NOTES.indexOf(selectedRoot);
+                  const matchingInterval = intervals.find(i => (rootIndex + i) % 12 === ALL_NOTES.indexOf(key.note));
+                  const semitones = matchingInterval !== undefined ? matchingInterval : (ALL_NOTES.indexOf(key.note) - rootIndex + 12) % 12;
+                  label = getIntervalName(semitones);
+                }
+
                 return (
                   <button
                     key={key.noteWithOctave}
@@ -153,7 +175,7 @@ const Piano: React.FC<PianoProps> = ({
                     }}
                   >
                     <span className={cn('font-bold select-none text-white', { 'text-xs': keyDimensions.blackKeyWidth < 20 }, isHighlighted && { 'text-red-400': isRoot, 'text-sky-400': !isRoot })}>
-                      {showNoteNames ? key.note : ''}
+                      {label}
                     </span>
                   </button>
                 );
