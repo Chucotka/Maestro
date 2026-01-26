@@ -37,14 +37,14 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
           'shadow-lg': isRoot && isHighlighted && !isActive,
           'shadow-md': !isRoot && isHighlighted && !isActive,
           
-          // Root Note
-          'border-red-500 text-red-600 bg-red-100/80 dark:border-red-400 dark:text-red-400 dark:bg-red-900/70 dark:shadow-red-500/30': isRoot && isHighlighted,
+          // Root Note (Orange/Brown in the reference image)
+          'border-[#b06a3b] text-[#b06a3b] bg-[#4a2e1c]/40 dark:border-[#d97706] dark:text-[#d97706] dark:bg-[#451a03]/60': isRoot && isHighlighted,
           
-          // Other Scale Notes
-          'border-sky-500 text-sky-600 bg-sky-100/80 dark:border-sky-400 dark:text-sky-400 dark:bg-sky-900/70 dark:shadow-sky-500/30': !isRoot && isHighlighted,
+          // Other Scale Notes (Cream/Light in the reference image)
+          'border-[#e5d5c0] text-[#e5d5c0] bg-[#4a2e1c]/40 dark:border-[#fef3c7] dark:text-[#fef3c7] dark:bg-[#451a03]/60': !isRoot && isHighlighted,
           
           // Non-Scale Notes (when showAllNotes is true)
-          'border-stone-400 text-stone-600 bg-stone-50/80 dark:border-slate-600 dark:text-slate-300 dark:bg-slate-800/70': !isHighlighted,
+          'border-stone-600 text-stone-500 bg-transparent': !isHighlighted,
         }
       )}
       onClick={handleClick}

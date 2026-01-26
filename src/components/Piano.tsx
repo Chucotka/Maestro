@@ -95,23 +95,9 @@ const Piano: React.FC<PianoProps> = ({
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
-      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6 justify-center items-center">
-        <Tabs value={mode} onValueChange={(v) => onModeChange?.(v as 'scale' | 'chord')} className="w-[200px]">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="scale">{t('scales')}</TabsTrigger>
-            <TabsTrigger value="chord">{t('chords')}</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex items-center space-x-2">
-          <Switch id="show-note-names-piano" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
-          <Label htmlFor="show-note-names-piano" className="text-gray-700 dark:text-gray-300">{t('showNoteNames')}</Label>
-        </div>
-      </div>
-
-      <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-        <div className="min-w-[800px] h-48 md:h-64 p-2 bg-slate-200 dark:bg-slate-900">
+    <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300">
+      <ScrollArea className="w-full whitespace-nowrap border-none">
+        <div className="min-w-[800px] h-48 md:h-64 p-2 bg-[#121212]">
         <div ref={pianoContainerRef} className="relative w-full h-full">
           {keyDimensions.whiteKeyWidth > 0 && (
             <div className="relative w-full h-full">
@@ -125,12 +111,12 @@ const Piano: React.FC<PianoProps> = ({
                       onClick={() => handleNoteClick(key.noteWithOctave)}
                       className={cn(
                         'flex-shrink-0 flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 bg-white hover:bg-slate-100',
-                        activeNotes.has(key.noteWithOctave) && 'bg-yellow-200 dark:bg-yellow-900/80 scale-y-[0.98] z-20',
-                        isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-100 dark:bg-red-900/50': isRoot, 'bg-sky-100 dark:bg-sky-900/50': !isRoot }
+                        activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b]/50 scale-y-[0.98] z-20',
+                        isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#b06a3b]/20': isRoot, 'bg-[#e5d5c0]/20': !isRoot }
                       )}
-                      style={{ width: `${keyDimensions.whiteKeyWidth}px` }}
+                      style={{ width: `${keyDimensions.whiteKeyWidth}px`, backgroundColor: '#e5d5c0' }}
                     >
-                      <span className={cn('font-bold select-none text-black', { 'text-xs': keyDimensions.whiteKeyWidth < 28 }, isHighlighted && { 'text-red-600 dark:text-red-400': isRoot, 'text-sky-600 dark:text-sky-400': !isRoot })}>
+                      <span className={cn('font-bold select-none text-black', { 'text-xs': keyDimensions.whiteKeyWidth < 28 }, isHighlighted && { 'text-[#b06a3b]': isRoot, 'text-stone-800': !isRoot })}>
                         {showNoteNames ? key.note : ''}
                       </span>
                     </button>
@@ -155,9 +141,9 @@ const Piano: React.FC<PianoProps> = ({
                     key={key.noteWithOctave}
                     onClick={() => handleNoteClick(key.noteWithOctave)}
                     className={cn(
-                      'absolute flex items-start justify-center pt-1 border-slate-400 rounded-b-sm transition-all duration-100 z-10 bg-slate-800 hover:bg-slate-700 border-2 pointer-events-auto',
-                      activeNotes.has(key.noteWithOctave) && 'bg-yellow-500 scale-y-[0.95] z-30',
-                      isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-4': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-800': isRoot, 'bg-sky-800': !isRoot }
+                      'absolute flex items-start justify-center pt-1 border-stone-800 rounded-b-sm transition-all duration-100 z-10 bg-stone-900 hover:bg-stone-800 border pointer-events-auto',
+                      activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b] scale-y-[0.95] z-30',
+                      isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#4a2e1c]': isRoot, 'bg-[#2a2a2a]': !isRoot }
                     )}
                     style={{
                       width: `${keyDimensions.blackKeyWidth}px`,
@@ -180,12 +166,6 @@ const Piano: React.FC<PianoProps> = ({
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
 
-      <div className="mt-8 text-center">
-        <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">
-          {mode === 'scale' ? t('scaleNotes') : t('chordNotes')}
-        </h3>
-        <p className="text-lg text-gray-700 dark:text-gray-300">{activeNotesList.join(", ")}</p>
-      </div>
     </div>
   );
 };

@@ -5,13 +5,21 @@ import CircleOfFifths from "@/components/CircleOfFifths";
 import ProgressionGenerator from "@/components/ProgressionGenerator";
 import ArpeggioPlayer from "@/components/ArpeggioPlayer";
 import Metronome from "@/components/Metronome";
+import AudioVisualizer from "@/components/AudioVisualizer";
 import { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
-import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2 } from "lucide-react";
+import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2, ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, CAGED_SHAPES, romanToChord, getScaleNotes, getChordNotes } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, CAGED_SHAPES, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
@@ -31,6 +39,7 @@ const Index = () => {
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const [selectedChordName, setSelectedChordName] = useState<keyof typeof CHORDS>("Major");
   const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("E");
+  const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged'>('scale');
   const [volume, setVolume] = useState(0.8);
   const { theme, setTheme } = useTheme();
@@ -145,17 +154,17 @@ const Index = () => {
 
   if (!isAudioEnabled) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-stone-100 dark:bg-slate-900 p-4">
-        <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl w-full max-w-md">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#121212] p-4">
+        <div className="flex flex-col items-center justify-center p-8 bg-[#1a1a1a] border border-stone-800 rounded-lg shadow-2xl w-full max-w-md">
+          <h2 className="text-2xl font-bold mb-4 text-[#b06a3b]">
             {loadingInstruments.size > 0 ? t('loadingInstruments') : t('audioDisabled')}
           </h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">
+          <p className="text-gray-400 mb-6 text-center">
             {loadingInstruments.size > 0
               ? t('loadingMessage')
               : t('enableAudio')}
           </p>
-          <Button onClick={enableAudio} size="lg" disabled={loadingInstruments.size > 0}>
+          <Button onClick={enableAudio} size="lg" disabled={loadingInstruments.size > 0} className="bg-[#b06a3b] hover:bg-[#8e5630] text-white font-bold">
             {loadingInstruments.size > 0 ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Music className="mr-2 h-5 w-5" />}
             {loadingInstruments.size > 0 ? t('loading') : t('enableAudio')}
           </Button>
@@ -166,143 +175,115 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start bg-stone-100 dark:bg-slate-900 p-4 transition-colors duration-300">
-      <div className="w-full max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div className="w-24"></div> {/* Spacer */}
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">{t('title')}</h1>
-          <div className="flex gap-1 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-            <Button
-              variant={language === 'en' ? "default" : "ghost"}
-              size="sm"
-              className="h-8 px-2"
-              onClick={() => setLanguage('en')}
-            >EN</Button>
-            <Button
-              variant={language === 'ru' ? "default" : "ghost"}
-              size="sm"
-              className="h-8 px-2"
-              onClick={() => setLanguage('ru')}
-            >RU</Button>
-          </div>
-        </div>
-        
-        <div className="p-4 mb-6 bg-white dark:bg-slate-800/50 rounded-lg shadow-lg backdrop-blur-sm">
-          <div className="flex flex-col md:flex-row flex-wrap gap-4 justify-center items-center">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="root-select" className="text-gray-700 dark:text-gray-300">{t('rootNote')}:</Label>
-              <Select value={selectedRoot} onValueChange={setSelectedRoot}>
-                <SelectTrigger id="root-select" className="w-[120px]">
-                  <SelectValue placeholder="Select Root" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_NOTES.map((note) => (
-                    <SelectItem key={note} value={note}>{note}</SelectItem>
+    <div className="min-h-screen flex flex-col items-center justify-start bg-[#121212] transition-colors duration-300">
+      {/* Top Navigation Bar from Reference Image */}
+      <div className="w-full bg-[#1e1e1e] border-b border-stone-800 px-4 py-2 mb-4 overflow-x-auto">
+        <div className="flex items-center justify-center gap-1 md:gap-4 min-w-max">
+          {[
+            { id: 'chords', label: t('chords'), action: () => setViewMode('chord') },
+            { id: 'triads', label: t('triads') },
+            { id: 'quiz', label: t('quiz') },
+            { id: 'finder', label: t('finder') },
+            { id: 'scales', label: t('scales'), action: () => setViewMode('scale') },
+            { id: 'caged', label: t('caged'), action: () => setViewMode('caged') },
+            { id: 'arpeggios', label: t('arpeggios') },
+            { id: 'notes', label: t('notes') },
+            {
+              id: 'tunings',
+              label: t('tunings'),
+              dropdown: GUITAR_TUNINGS,
+              onSelect: (val: string) => setSelectedTuningName(val)
+            },
+            { id: 'virtual', label: t('virtual') }
+          ].map((item) => (
+            item.dropdown ? (
+              <DropdownMenu key={item.id}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4">
+                    {item.label}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[300px] overflow-y-auto">
+                  {Object.keys(item.dropdown).map(val => (
+                    <DropdownMenuItem key={val} onClick={() => {
+                      if (item.onSelect) item.onSelect(val);
+                      toast.success(`${item.label} changed to ${val}`);
+                    }} className="hover:bg-stone-800 focus:bg-stone-800 text-gray-300">
+                      {val}
+                    </DropdownMenuItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                key={item.id}
+                variant="ghost"
+                className={cn(
+                  "text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4",
+                  (viewMode === 'chord' && item.id === 'chords') || (viewMode === 'scale' && item.id === 'scales') ? "bg-stone-800 text-white" : ""
+                )}
+                onClick={item.action}
+              >
+                {item.label}
+              </Button>
+            )
+          ))}
+          <div className="flex-grow"></div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white">
+                <Guitar className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300">
+              <DropdownMenuItem onClick={() => setSelectedInstrument('guitar')}>{t('acoustic')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedInstrument('clean')}>{t('clean')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedInstrument('distortion')}>{t('distortion')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedInstrument('bass')}>{t('bass')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedInstrument('piano')}>{t('piano')}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            {viewMode === 'scale' && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="scale-select" className="text-gray-700 dark:text-gray-300">{t('scaleMode')}:</Label>
-                <Select
-                  value={selectedScaleName}
-                  onValueChange={(value) => setSelectedScaleName(value as keyof typeof SCALES)}
-                >
-                  <SelectTrigger id="scale-select" className="w-[180px]">
-                    <SelectValue placeholder="Select Scale/Mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(SCALES).map((scale) => (
-                      <SelectItem key={scale} value={scale}>{t(scale as any)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white">
+                <Settings className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300">
+              <DropdownMenuItem onClick={() => setLanguage(language === 'en' ? 'ru' : 'en')}>
+                {language === 'en' ? 'RU' : 'EN'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="ghost" className="text-red-600 font-bold text-xl" onClick={() => toast.info(t('title'), { description: "Professional music theory dashboard for guitarists and pianists." })}>?</Button>
+        </div>
+      </div>
 
-            {viewMode === 'chord' && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="chord-select" className="text-gray-700 dark:text-gray-300">{t('chordType')}:</Label>
-                <Select
-                  value={selectedChordName}
-                  onValueChange={(value) => setSelectedChordName(value as keyof typeof CHORDS)}
-                >
-                  <SelectTrigger id="chord-select" className="w-[180px]">
-                    <SelectValue placeholder="Select Chord Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(CHORDS).map((chord) => (
-                      <SelectItem key={chord} value={chord}>{t(chord as any)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+      <div className="w-full max-w-7xl mx-auto px-4">
 
-            {viewMode === 'caged' && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="caged-select" className="text-gray-700 dark:text-gray-300">{t('cagedShape')}:</Label>
-                <Select
-                  value={selectedCagedShape}
-                  onValueChange={(value) => setSelectedCagedShape(value as keyof typeof CAGED_SHAPES)}
-                >
-                  <SelectTrigger id="caged-select" className="w-[120px]">
-                    <SelectValue placeholder="Select Shape" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(CAGED_SHAPES).map((shape) => (
-                      <SelectItem key={shape} value={shape}>{shape} Shape</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <ToggleGroup 
-              type="single" 
-              value={selectedInstrument} 
-              onValueChange={(value) => { if (value) setSelectedInstrument(value as InstrumentType) }}
-              className="border border-gray-200 dark:border-gray-700 rounded-md flex-wrap"
+        {/* Root Note Selection Buttons */}
+        <div className="flex flex-wrap items-center justify-center gap-1 mb-4">
+          {ALL_NOTES.map((note) => (
+            <Button
+              key={note}
+              variant="outline"
+              className={cn(
+                "w-12 h-12 md:w-16 md:h-16 text-lg font-bold transition-all border-stone-700 bg-[#2a2a2a] text-gray-300 hover:bg-stone-800 hover:text-white",
+                selectedRoot === note ? "bg-[#b06a3b] text-white border-[#b06a3b] hover:bg-[#b06a3b]" : ""
+              )}
+              onClick={() => setSelectedRoot(note)}
             >
-              <ToggleGroupItem value="guitar" aria-label="Select acoustic guitar">
-                <Guitar className="h-4 w-4 mr-2" /> {t('acoustic')}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="clean" aria-label="Select clean guitar">
-                <Volume2 className="h-4 w-4 mr-2" /> {t('clean')}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="distortion" aria-label="Select distortion guitar">
-                <Zap className="h-4 w-4 mr-2" /> {t('distortion')}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="bass" aria-label="Select bass">
-                <Music className="h-4 w-4 mr-2" /> {t('bass')}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="piano" aria-label="Select piano">
-                <PianoIcon className="h-4 w-4 mr-2" /> {t('piano')}
-              </ToggleGroupItem>
-            </ToggleGroup>
-            
-            <div className="flex items-center space-x-2">
-              {volume === 0 ? <VolumeX className="h-5 w-5 text-gray-500" /> : volume < 0.5 ? <Volume1 className="h-5 w-5 text-gray-500" /> : <Volume2 className="h-5 w-5 text-gray-500" />}
-              <Slider
-                value={[volume * 100]}
-                max={100}
-                step={1}
-                className="w-24 md:w-32"
-                onValueChange={(vals) => setVolume(vals[0] / 100)}
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} />
-              <Label htmlFor="dark-mode" className="text-gray-700 dark:text-gray-300">{t('dark')}</Label>
-            </div>
-          </div>
+              {note}
+            </Button>
+          ))}
         </div>
 
-        <div className="flex flex-col gap-8">
-          <div className="relative w-full">
+        <div className="flex flex-col gap-4">
+          <div className="relative w-full border border-stone-800 rounded-lg overflow-hidden bg-[#1a1a1a] shadow-inner">
             {isSelectedLoading && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
                 <Loader2 className="h-10 w-10 animate-spin text-sky-500 mb-2" />
@@ -325,6 +306,8 @@ const Index = () => {
                 selectedScaleName={selectedScaleName}
                 selectedChordName={selectedChordName}
                 selectedCagedShape={selectedCagedShape}
+                selectedTuningName={selectedTuningName}
+                onTuningChange={setSelectedTuningName}
                 mode={viewMode}
                 onModeChange={setViewMode}
                 instrumentType={selectedInstrument}
@@ -333,8 +316,74 @@ const Index = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 flex flex-col gap-6">
+          <div className="px-4 pt-4">
+            <AudioVisualizer isAudioEnabled={isAudioEnabled} />
+          </div>
+
+          {/* Info Display and Playback Controls */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4">
+            <div className="flex flex-col">
+              <h2 className="text-3xl font-bold text-[#b06a3b]">
+                {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` : `${selectedRoot} ${t(selectedScaleName as any)}`}
+              </h2>
+              <p className="text-xl text-stone-500 font-mono">
+                {activeNotesForArpeggio.join(' . ')} / {viewMode === 'chord' ? CHORDS[selectedChordName].join(',') : SCALES[selectedScaleName].join(',')}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700">
+              <Button variant="ghost" size="icon" className="text-gray-300"><ChevronLeft className="h-6 w-6" /></Button>
+              <div className="flex items-center gap-2 px-4 py-2 bg-stone-800 rounded text-gray-300 font-bold min-w-[150px] justify-center">
+                <Volume2 className="h-5 w-5 mr-2" /> {t('playStatus', { current: '1', total: '6' })}
+              </div>
+              <Button variant="ghost" size="icon" className="text-gray-300"><ChevronRight className="h-6 w-6" /></Button>
+            </div>
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800">
+                  <Music className="mr-2 h-5 w-5" /> {viewMode === 'chord' ? t('chordType') : t('scaleMode')}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[300px] overflow-y-auto">
+                {viewMode === 'chord'
+                  ? Object.keys(CHORDS).map(c => (
+                      <DropdownMenuItem key={c} onClick={() => setSelectedChordName(c as any)} className="hover:bg-stone-800 focus:bg-stone-800">
+                        {c}
+                      </DropdownMenuItem>
+                    ))
+                  : Object.keys(SCALES).map(s => (
+                      <DropdownMenuItem key={s} onClick={() => setSelectedScaleName(s as any)} className="hover:bg-stone-800 focus:bg-stone-800">
+                        {t(s as any)}
+                      </DropdownMenuItem>
+                    ))
+                }
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant="outline"
+              className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800"
+              onClick={() => toast.info(viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}: ${activeNotesForArpeggio.join(', ')}` : `${selectedRoot} ${t(selectedScaleName as any)}: ${activeNotesForArpeggio.join(', ')}`)}
+            >
+              <Zap className="mr-2 h-5 w-5" /> Info
+            </Button>
+
+            <Button variant="outline" className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.info("Finding recommended scales...")}>
+              <Zap className="mr-2 h-5 w-5" /> {t('recScales')}
+            </Button>
+
+            <Button variant="outline" className="h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.success("Added to Favorites!")}>
+              <Zap className="mr-2 h-5 w-5 text-red-500" /> {t('myFav')}
+            </Button>
+          </div>
+
+          {/* Secondary Tools */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pb-24">
+            <div className="flex flex-col gap-6">
               <CircleOfFifths
                 selectedRoot={selectedRoot}
                 onNoteSelect={setSelectedRoot}
@@ -342,7 +391,7 @@ const Index = () => {
               <Metronome />
             </div>
 
-            <div className="lg:col-span-2 flex flex-col gap-6">
+            <div className="flex flex-col gap-6">
               <ArpeggioPlayer
                 notes={activeNotesForArpeggio}
                 sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}

@@ -10,9 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from '@/lib/i18n';
 
 const NUM_FRETS = 24;
-const STRING_HEIGHT_PX = 40;
-const FRET_NUMBER_HEIGHT_PX = 30;
-const STRING_LABEL_WIDTH_PX = 40;
+const STRING_HEIGHT_PX = 45;
+const FRET_NUMBER_HEIGHT_PX = 40;
+const STRING_LABEL_WIDTH_PX = 30;
 
 const FRET_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
 const FRET_DOT_FRETS_DOUBLE = [12, 24];
@@ -22,6 +22,8 @@ interface FretboardProps {
   selectedScaleName: keyof typeof SCALES;
   selectedChordName?: keyof typeof CHORDS;
   selectedCagedShape?: keyof typeof CAGED_SHAPES;
+  selectedTuningName: string;
+  onTuningChange: (tuning: string) => void;
   mode: 'scale' | 'chord' | 'caged';
   sampler: Tone.Sampler | null;
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
@@ -33,15 +35,14 @@ const Fretboard: React.FC<FretboardProps> = ({
   selectedScaleName,
   selectedChordName,
   selectedCagedShape,
+  selectedTuningName,
+  onTuningChange,
   mode,
   sampler,
   instrumentType,
   onModeChange
 }) => {
   const { t } = useI18n();
-  const [selectedTuningName, setSelectedTuningName] = useState<string>(
-    instrumentType === 'bass' ? "Bass (Standard)" : "Standard"
-  );
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
   const [showNoteNames, setShowNoteNames] = useState<boolean>(false);
   const [fretDimensions, setFretDimensions] = useState({ fretWidth: 60, markerSize: 28 });
@@ -66,8 +67,8 @@ const Fretboard: React.FC<FretboardProps> = ({
   }, [mode, selectedRoot, selectedCagedShape, currentTuning]);
 
   useLayoutEffect(() => {
-    setSelectedTuningName(instrumentType === 'bass' ? "Bass (Standard)" : "Standard");
-  }, [instrumentType]);
+    onTuningChange(instrumentType === 'bass' ? "Bass (Standard)" : "Standard");
+  }, [instrumentType, onTuningChange]);
 
   useLayoutEffect(() => {
     const container = fretboardContainerRef.current;
@@ -147,53 +148,16 @@ const Fretboard: React.FC<FretboardProps> = ({
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300 overflow-hidden">
-      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6 justify-center items-center">
-        <Tabs value={mode} onValueChange={(v) => onModeChange?.(v as any)} className="w-[300px]">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="scale">{t('scales')}</TabsTrigger>
-            <TabsTrigger value="chord">{t('chords')}</TabsTrigger>
-            <TabsTrigger value="caged">{t('caged')}</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex items-center gap-2">
-          <Label htmlFor="tuning-select" className="text-gray-700 dark:text-gray-300">{t('tuning')}:</Label>
-          <Select
-            value={selectedTuningName}
-            onValueChange={(value) => setSelectedTuningName(value)}
-          >
-            <SelectTrigger id="tuning-select" className="w-[180px]">
-              <SelectValue placeholder="Select Tuning" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(GUITAR_TUNINGS)
-                .filter(t => instrumentType === 'bass' ? t.includes("Bass") : !t.includes("Bass"))
-                .map((tuning) => (
-                <SelectItem key={tuning} value={tuning}>{tuning}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Switch id="show-all-notes" checked={showAllNotes} onCheckedChange={setShowAllNotes} />
-          <Label htmlFor="show-all-notes" className="text-gray-700 dark:text-gray-300">{t('showAllNotes')}</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Switch id="show-note-names" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
-          <Label htmlFor="show-note-names" className="text-gray-700 dark:text-gray-300">{t('showNoteNames')}</Label>
-        </div>
-      </div>
-
-      <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+    <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300 overflow-hidden">
+      <ScrollArea className="w-full whitespace-nowrap border-none">
         <div className="min-w-[1000px] p-4">
-        <div className="flex w-full" style={{ paddingLeft: STRING_LABEL_WIDTH_PX }}>
-          {Array.from({ length: NUM_FRETS }).map((_, i) => {
-            const fretNumber = i + 1;
+        <div className="flex w-full" style={{ paddingLeft: STRING_LABEL_WIDTH_PX * 2 }}>
+          {[0, ...Array.from({ length: NUM_FRETS })].map((_, i) => {
+            const fretNumber = i;
             return (
               <div
                 key={`fret-num-${fretNumber}`}
-                className="flex-shrink-0 flex items-center justify-center text-xs font-semibold text-gray-500 dark:text-gray-400"
+                className="flex-shrink-0 flex items-center justify-center text-sm font-bold text-gray-400"
                 style={{ width: `${fretDimensions.fretWidth}px`, height: `${FRET_NUMBER_HEIGHT_PX}px` }}
               >
                 {fretNumber}
@@ -206,8 +170,20 @@ const Fretboard: React.FC<FretboardProps> = ({
           <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
             {displayTuning.map((note, i) => (
               <div
-                key={`string-label-${i}`}
-                className="flex items-center justify-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                key={`string-label-outer-left-${i}`}
+                className="flex items-center justify-center text-xs font-bold text-gray-500"
+                style={{ height: `${STRING_HEIGHT_PX}px` }}
+              >
+                {note.match(/[A-G]#?/)?.[0] || ''}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
+            {displayTuning.map((note, i) => (
+              <div
+                key={`string-label-left-${i}`}
+                className="flex items-center justify-center text-xs font-bold text-gray-400"
                 style={{ height: `${STRING_HEIGHT_PX}px` }}
               >
                 {note.match(/[A-G]#?/)?.[0] || ''}
@@ -217,16 +193,23 @@ const Fretboard: React.FC<FretboardProps> = ({
 
           <div
             ref={fretboardContainerRef}
-            className="relative border-l-8 border-stone-700 dark:border-stone-300 bg-amber-200 dark:bg-stone-900 rounded-r-md transition-colors duration-300"
+            className="relative bg-[#3d1c13] transition-colors duration-300 border-y border-stone-900 overflow-hidden"
             style={{ 
               flex: 1,
-              height: `${displayTuning.length * STRING_HEIGHT_PX}px` 
+              height: `${displayTuning.length * STRING_HEIGHT_PX}px`,
+              backgroundImage: 'linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)',
+              backgroundSize: '100% 1px, 40px 100%'
             }}
           >
+            {/* Wood Grain simulation */}
+            <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'repeating-radial-gradient(circle at 20% 50%, #5c2a1c 0px, #3d1c13 100px)' }}></div>
+            {/* Nut */}
+            <div className="absolute left-0 top-0 h-full w-2 bg-stone-900 z-20" />
+
             {Array.from({ length: NUM_FRETS }).map((_, i) => (
               <div
                 key={`fret-line-${i + 1}`}
-                className="absolute top-0 h-full w-[1.5px] bg-stone-400 dark:bg-stone-600"
+                className="absolute top-0 h-full w-[2px] bg-stone-900/80"
                 style={{ left: `${(i + 1) * fretDimensions.fretWidth}px` }}
               />
             ))}
@@ -319,9 +302,21 @@ const Fretboard: React.FC<FretboardProps> = ({
             {displayTuning.map((_, i) => (
               <div
                 key={`string-line-${i}`}
-                className="absolute left-0 w-full h-[1.5px] bg-gradient-to-r from-gray-600 to-gray-400 dark:from-slate-500 dark:to-slate-300"
+                className="absolute left-0 w-full h-[1.5px] bg-black/60 shadow-sm"
                 style={{ top: `${i * STRING_HEIGHT_PX + STRING_HEIGHT_PX / 2}px`, transform: 'translateY(-50%)' }}
               />
+            ))}
+          </div>
+
+          <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
+            {displayTuning.map((note, i) => (
+              <div
+                key={`string-label-right-${i}`}
+                className="flex items-center justify-center text-xs font-bold text-gray-400"
+                style={{ height: `${STRING_HEIGHT_PX}px` }}
+              >
+                {note.match(/[A-G]#?/)?.[0] || ''}
+              </div>
             ))}
           </div>
         </div>
@@ -329,20 +324,6 @@ const Fretboard: React.FC<FretboardProps> = ({
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
 
-      <div className="mt-8 text-center">
-        <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">
-          {mode === 'caged'
-            ? t('cagedShapeNotes', { shape: selectedCagedShape || '' })
-            : mode === 'scale'
-            ? t('scaleNotes')
-            : t('chordNotes')}
-        </h3>
-        <p className="text-lg text-gray-700 dark:text-gray-300">
-          {mode === 'caged'
-            ? cagedFretNotes.map(n => `${n.noteName} (${n.interval})`).join(", ")
-            : activeNotesList.join(", ")}
-        </p>
-      </div>
     </div>
   );
 };
