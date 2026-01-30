@@ -109,6 +109,8 @@ const translations = {
     notes_explanation: 'Understanding intervals and their positions on the fretboard is key to mastering the instrument. Toggle between Notes and Degrees to see the relationship.',
     matching_results: 'Matching Scales/Chords:',
     no_matches: 'No exact matches found.',
+    theoryTools: 'Theory & Progressions',
+    practiceTools: 'Rhythm & Practice',
   },
   ru: {
     title: 'Мастер Ладов и Клавиш',
@@ -216,6 +218,8 @@ const translations = {
     notes_explanation: 'Понимание интервалов и их расположения на грифе — ключ к мастерству. Переключайтесь между Названиями и Ступенями, чтобы видеть связи.',
     matching_results: 'Подходящие гаммы/аккорды:',
     no_matches: 'Точных совпадений не найдено.',
+    theoryTools: 'Теория и прогрессии',
+    practiceTools: 'Ритм и практика',
   }
 };
 

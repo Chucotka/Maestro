@@ -1,11 +1,9 @@
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import Fretboard from "@/components/Fretboard";
 import Piano from "@/components/Piano";
 import CircleOfFifths from "@/components/CircleOfFifths";
 import ProgressionGenerator from "@/components/ProgressionGenerator";
 import ArpeggioPlayer from "@/components/ArpeggioPlayer";
 import Metronome from "@/components/Metronome";
-import AudioVisualizer from "@/components/AudioVisualizer";
 import { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
@@ -23,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, CAGED_SHAPES, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTheme } from "next-themes";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -235,7 +234,6 @@ const Index = () => {
             {loadingInstruments.size > 0 ? t('loading') : t('enableAudio')}
           </Button>
         </div>
-        <MadeWithDyad />
       </div>
     );
   }
@@ -265,7 +263,7 @@ const Index = () => {
             item.dropdown ? (
               <DropdownMenu key={item.id}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4">
+                  <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4 text-xs md:text-sm">
                     {item.label}
                   </Button>
                 </DropdownMenuTrigger>
@@ -285,7 +283,7 @@ const Index = () => {
                 key={item.id}
                 variant="ghost"
                 className={cn(
-                  "text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4",
+                  "text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4 text-xs md:text-sm",
                   (viewMode === 'chord' && item.id === 'chords') || (viewMode === 'scale' && item.id === 'scales') ? "bg-stone-800 text-white" : ""
                 )}
                 onClick={item.action}
@@ -339,7 +337,7 @@ const Index = () => {
               key={note}
               variant="outline"
               className={cn(
-                "w-12 h-12 md:w-16 md:h-16 text-lg font-bold transition-all border-stone-700 bg-[#2a2a2a] text-gray-300 hover:bg-stone-800 hover:text-white",
+                "w-10 h-10 md:w-16 md:h-16 text-base md:text-lg font-bold transition-all border-stone-700 bg-[#2a2a2a] text-gray-300 hover:bg-stone-800 hover:text-white",
                 "landscape:w-11 landscape:h-11 landscape:text-base",
                 selectedRoot === note ? "bg-[#b06a3b] text-white border-[#b06a3b] hover:bg-[#b06a3b]" : ""
               )}
@@ -485,22 +483,18 @@ const Index = () => {
             )}
           </div>
 
-          <div className="px-4 pt-4 landscape:pt-1 landscape:pb-1">
-            <AudioVisualizer isAudioEnabled={isAudioEnabled} />
-          </div>
-
           {/* Info Display and Playback Controls */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 landscape:p-2 landscape:gap-2">
-            <div className="flex flex-col">
-              <h2 className="text-3xl font-bold text-[#b06a3b] landscape:text-xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 p-2 md:p-4 landscape:p-2 landscape:gap-2">
+            <div className="flex flex-col text-center md:text-left">
+              <h2 className="text-xl md:text-3xl font-bold text-[#b06a3b] landscape:text-xl">
                 {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` : `${selectedRoot} ${t_safe(selectedScaleName)}`}
               </h2>
-              <p className="text-xl text-stone-500 font-mono landscape:text-sm">
+              <p className="text-sm md:text-xl text-stone-500 font-mono landscape:text-sm">
                 {activeNotesForArpeggio.join(' . ')} / {viewMode === 'chord' ? CHORDS[selectedChordName].join(',') : viewMode === 'scale' ? SCALES[selectedScaleName].join(',') : 'CAGED'}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700 landscape:scale-90">
+            <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700 scale-90 md:scale-100 landscape:scale-90">
               <Button variant="ghost" size="icon" className="text-gray-300" onClick={() => { /* Prev item logic */ }}><ChevronLeft className="h-6 w-6" /></Button>
               <Button
                 variant="ghost"
@@ -561,36 +555,51 @@ const Index = () => {
           </div>
 
           {/* Secondary Tools */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-12 pb-24 landscape:mt-4">
-            <div className="flex flex-col gap-6">
-              <CircleOfFifths
-                selectedRoot={selectedRoot}
-                onNoteSelect={setSelectedRoot}
-              />
-              <Metronome />
-            </div>
+          <div className="mt-8 pb-24 landscape:mt-4">
+            <Tabs defaultValue="theory" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-[#1a1a1a] border border-stone-800 p-1 mb-6">
+                <TabsTrigger value="theory" className="data-[state=active]:bg-[#b06a3b] data-[state=active]:text-white text-gray-400">
+                  {t('theoryTools') || 'Theory & Progressions'}
+                </TabsTrigger>
+                <TabsTrigger value="practice" className="data-[state=active]:bg-[#b06a3b] data-[state=active]:text-white text-gray-400">
+                  {t('practiceTools') || 'Rhythm & Practice'}
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="flex flex-col gap-6" ref={arpeggioRef}>
-              <ArpeggioPlayer
-                notes={activeNotesForArpeggio}
-                sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}
-                instrumentType={selectedInstrument}
-              />
+              <TabsContent value="theory" className="flex flex-col gap-6 mt-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <CircleOfFifths
+                    selectedRoot={selectedRoot}
+                    onNoteSelect={setSelectedRoot}
+                  />
+                  <ProgressionGenerator
+                    selectedRoot={selectedRoot}
+                    onChordSelect={(root, type) => {
+                      setSelectedRoot(root);
+                      setSelectedChordName(type);
+                      setViewMode('chord');
+                    }}
+                  />
+                </div>
+              </TabsContent>
 
-              <ProgressionGenerator
-                selectedRoot={selectedRoot}
-                onChordSelect={(root, type) => {
-                  setSelectedRoot(root);
-                  setSelectedChordName(type);
-                  setViewMode('chord');
-                }}
-              />
-            </div>
+              <TabsContent value="practice" className="flex flex-col gap-6 mt-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div ref={arpeggioRef}>
+                    <ArpeggioPlayer
+                      notes={activeNotesForArpeggio}
+                      sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}
+                      instrumentType={selectedInstrument}
+                    />
+                  </div>
+                  <Metronome />
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
       <div className="mt-12 pb-8">
-        <MadeWithDyad />
       </div>
     </div>
   );

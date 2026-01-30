@@ -38,10 +38,10 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
           'shadow-md': !isRoot && isHighlighted && !isActive,
           
           // Root Note (Orange/Brown in the reference image)
-          'border-[#b06a3b] text-[#b06a3b] bg-[#4a2e1c]/40 dark:border-[#d97706] dark:text-[#d97706] dark:bg-[#451a03]/60': isRoot && isHighlighted,
+          'border-[#b06a3b] text-[#b06a3b] bg-[#1a1a1a] shadow-[0_0_8px_rgba(176,106,59,0.5)] border-4': isRoot && isHighlighted,
           
           // Other Scale Notes (Cream/Light in the reference image)
-          'border-[#e5d5c0] text-[#e5d5c0] bg-[#4a2e1c]/40 dark:border-[#fef3c7] dark:text-[#fef3c7] dark:bg-[#451a03]/60': !isRoot && isHighlighted,
+          'border-[#e5d5c0] text-[#e5d5c0] bg-[#1a1a1a]': !isRoot && isHighlighted,
           
           // Non-Scale Notes (when showAllNotes is true)
           'border-stone-600 text-stone-500 bg-transparent': !isHighlighted,

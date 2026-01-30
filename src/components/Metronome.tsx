@@ -19,7 +19,7 @@ const Metronome: React.FC = () => {
   const [timeSignature, setTimeSignature] = useState<TimeSignature>('4/4');
   const [soundType, setSoundType] = useState<SoundType>('click');
 
-  const synthRef = useRef<Tone.PolySynth | Tone.Synth | null>(null);
+  const synthRef = useRef<any>(null);
   const loopRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -43,9 +43,14 @@ const Metronome: React.FC = () => {
         envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
       }).toDestination();
     } else if (type === 'woodblock') {
-      synthRef.current = new Tone.Synth({
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
+      synthRef.current = new Tone.MembraneSynth({
+        pitchDecay: 0.008,
+        octaves: 2,
+        envelope: {
+          attack: 0.0006,
+          decay: 0.5,
+          sustain: 0
+        }
       }).toDestination();
     } else if (type === 'cowbell') {
       synthRef.current = new Tone.MetalSynth({
@@ -108,8 +113,11 @@ const Metronome: React.FC = () => {
 
           if (soundType === 'cowbell') {
             (synthRef.current as Tone.MetalSynth).triggerAttackRelease("32n", time, isFirstBeat ? 1 : 0.4);
+          } else if (soundType === 'woodblock') {
+            const freq = isFirstBeat ? "A4" : "E4";
+            (synthRef.current as Tone.MembraneSynth).triggerAttackRelease(freq, "32n", time, isFirstBeat ? 1 : 0.5);
           } else {
-            const freq = isFirstBeat ? (soundType === 'woodblock' ? "A6" : "A5") : (soundType === 'woodblock' ? "E6" : "E5");
+            const freq = isFirstBeat ? "A5" : "E5";
             (synthRef.current as Tone.Synth).triggerAttackRelease(freq, "32n", time, isFirstBeat ? 1 : 0.5);
           }
         }
