@@ -5,6 +5,7 @@ import { Play, Square, FastForward, Rewind } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { useI18n } from '@/lib/i18n';
 import { ALL_NOTES } from '@/lib/fretboardUtils';
+import { cn } from '@/lib/utils';
 
 interface ArpeggioPlayerProps {
   notes: string[]; // Note names like ["C", "E", "G"]
@@ -55,8 +56,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
     Tone.Transport.bpm.value = tempo;
 
     // Use "8n" as a base for timing
-    partRef.current = new Tone.Part((time, value) => {
-      sampler.triggerAttackRelease(value.note, "8n", time);
+    partRef.current = new Tone.Part((time, note) => {
+      sampler.triggerAttackRelease(note, "8n", time);
     }, sequence.map((note, i) => [Tone.Time("8n").toSeconds() * i, note]));
 
     partRef.current.loop = true;
@@ -75,18 +76,20 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col items-center gap-4 p-4 bg-[#1a1a1a] border border-stone-800 rounded-lg shadow-xl w-full">
+      <h3 className="text-lg font-bold text-[#b06a3b] self-start">{t('arpeggio')}</h3>
+      <div className="flex items-center gap-6 w-full">
         <Button
           variant={isPlaying ? "destructive" : "default"}
           size="icon"
           onClick={isPlaying ? stopArpeggio : startArpeggio}
+          className={cn("shrink-0", !isPlaying && "bg-[#b06a3b] hover:bg-[#8e5630]")}
         >
           {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
 
-        <div className="flex flex-col gap-1 w-32">
-          <div className="flex justify-between text-xs dark:text-gray-400">
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex justify-between text-xs text-gray-400">
             <span>{t('tempo')}</span>
             <span>{tempo} {t('bpm')}</span>
           </div>
@@ -95,6 +98,7 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
             min={40}
             max={240}
             onValueChange={v => setTempo(v[0])}
+            className="[&_[role=slider]]:bg-[#b06a3b]"
           />
         </div>
 
@@ -103,6 +107,7 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
             variant={direction === 'up' ? "default" : "outline"}
             size="sm"
             onClick={() => setDirection('up')}
+            className={cn(direction === 'up' ? "bg-stone-700 text-white" : "text-gray-400 border-stone-800")}
           >
             {t('up')}
           </Button>
@@ -110,8 +115,17 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
             variant={direction === 'down' ? "default" : "outline"}
             size="sm"
             onClick={() => setDirection('down')}
+            className={cn(direction === 'down' ? "bg-stone-700 text-white" : "text-gray-400 border-stone-800")}
           >
             {t('down')}
+          </Button>
+          <Button
+            variant={direction === 'updown' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDirection('updown')}
+            className={cn(direction === 'updown' ? "bg-stone-700 text-white" : "text-gray-400 border-stone-800")}
+          >
+            ↕
           </Button>
         </div>
       </div>

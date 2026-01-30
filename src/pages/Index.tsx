@@ -84,42 +84,57 @@ const Index = () => {
       return;
     }
 
+    // Determine what notes to play based on viewMode
+    let notes: string[] = [];
+    let isChord = false;
+
     if (viewMode === 'chord') {
-      const notes = getChordNotes(selectedRoot, CHORDS[selectedChordName]);
-      let currentOctave = inst === 'bass' ? 1 : 3;
-      let lastIdx = -1;
-      const playNotes = notes.map(n => {
-        const idx = ALL_NOTES.indexOf(n);
-        if (idx < lastIdx) currentOctave++;
-        lastIdx = idx;
-        return `${n}${currentOctave}`;
-      });
+      notes = getChordNotes(selectedRoot, CHORDS[selectedChordName]);
+      isChord = true;
+    } else if (viewMode === 'scale') {
+      notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+    } else if (viewMode === 'caged' && selectedCagedShape) {
+      // For CAGED, we can play the chord notes
+      notes = getChordNotes(selectedRoot, CHORDS['Major']);
+      isChord = true;
+    } else {
+      // Default to scale notes for other modes
+      notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+    }
+
+    if (notes.length === 0) return;
+
+    let currentOctave = inst === 'bass' ? 1 : 3;
+    let lastIdx = -1;
+    const playNotes = notes.map(n => {
+      const idx = ALL_NOTES.indexOf(n);
+      if (idx < lastIdx) currentOctave++;
+      lastIdx = idx;
+      return `${n}${currentOctave}`;
+    });
+
+    if (isChord) {
       sampler.triggerAttackRelease(playNotes, "2n");
     } else {
       // Play scale ascending
-      const notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
-      let currentOctave = inst === 'bass' ? 1 : 3;
-      let lastIdx = -1;
-      const playNotes = notes.map(n => {
-        const idx = ALL_NOTES.indexOf(n);
-        if (idx < lastIdx) currentOctave++;
-        lastIdx = idx;
-        return `${n}${currentOctave}`;
-      });
-
-      const now = Tone.now();
+      const now = Tone.now() + 0.1;
       playNotes.forEach((note, i) => {
         sampler.triggerAttackRelease(note, "8n", now + i * 0.25);
       });
+      // Add the root note an octave higher at the end for completion
+      const rootIdx = ALL_NOTES.indexOf(notes[0]);
+      let finalOctave = currentOctave;
+      if (rootIdx < lastIdx) finalOctave++;
+      sampler.triggerAttackRelease(`${notes[0]}${finalOctave}`, "8n", now + notes.length * 0.25);
     }
-  }, [selectedInstrument, selectedRoot, selectedChordName, selectedScaleName, viewMode]);
+  }, [selectedInstrument, selectedRoot, selectedChordName, selectedScaleName, viewMode, selectedCagedShape]);
 
-  // Auto-play chord when changed in chord mode
+  // Auto-play when root or type changed
   useEffect(() => {
-    if (viewMode === 'chord' && isAudioEnabled) {
+    if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled) {
       playCurrent();
     }
-  }, [selectedRoot, selectedChordName, viewMode]);
+  }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled]);
 
   useEffect(() => {
     const currentSamplers = samplers.current;
