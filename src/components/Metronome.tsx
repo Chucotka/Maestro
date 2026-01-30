@@ -19,7 +19,7 @@ const Metronome: React.FC = () => {
   const [timeSignature, setTimeSignature] = useState<TimeSignature>('4/4');
   const [soundType, setSoundType] = useState<SoundType>('click');
 
-  const synthRef = useRef<any>(null);
+  const synthRef = useRef<Tone.Synth | Tone.MembraneSynth | Tone.MetalSynth | null>(null);
   const loopRef = useRef<number | null>(null);
 
   useEffect(() => {

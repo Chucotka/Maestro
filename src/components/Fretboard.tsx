@@ -28,7 +28,7 @@ interface FretboardProps {
   mode: string;
   sampler: Tone.Sampler | null;
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
-  onModeChange?: (mode: any) => void;
+  onModeChange?: (mode: string) => void;
   onNoteClick?: (noteName: string, noteWithOctave: string) => void;
 }
 
@@ -166,7 +166,7 @@ const Fretboard: React.FC<FretboardProps> = ({
   };
 
   return (
-    <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300 overflow-hidden">
+    <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300">
       <div className="flex flex-wrap items-center gap-4 mb-2 px-2">
         <div className="flex items-center space-x-2">
           <Switch id="show-notes" checked={showNoteNames} onCheckedChange={setShowNoteNames} />

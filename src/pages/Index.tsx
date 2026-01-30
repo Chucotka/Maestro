@@ -55,7 +55,7 @@ const BASS_URLS = {
 
 const Index = () => {
   const { t, language, setLanguage } = useI18n();
-  const t_safe = (key: string) => t(key as any);
+  const t_safe = (key: string) => t(key as never);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [loadingInstruments, setLoadingInstruments] = useState<Set<InstrumentType>>(new Set());
   const [loadedInstruments, setLoadedInstruments] = useState<Set<InstrumentType>>(new Set());
@@ -133,7 +133,7 @@ const Index = () => {
     if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled) {
       playCurrent();
     }
-  }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled]);
+  }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled, playCurrent]);
 
   useEffect(() => {
     const currentSamplers = samplers.current;
@@ -403,14 +403,14 @@ const Index = () => {
                                   setSelectedRoot(res.root);
                                   if (SCALES[res.type as keyof typeof SCALES]) {
                                     setViewMode('scale');
-                                    setSelectedScaleName(res.type as any);
+                                    setSelectedScaleName(res.type as keyof typeof SCALES);
                                   } else {
                                     setViewMode('chord');
-                                    setSelectedChordName(res.type as any);
+                                    setSelectedChordName(res.type as keyof typeof CHORDS);
                                   }
                                 }}
                               >
-                                {res.root} {t(res.type as any)}
+                                {res.root} {t(res.type as never)}
                               </Button>
                             ));
                           })()}
@@ -423,7 +423,7 @@ const Index = () => {
             </div>
           )}
 
-          <div className="relative w-full border border-stone-800 rounded-lg overflow-hidden bg-[#1a1a1a] shadow-inner landscape:max-h-[50vh]">
+          <div className="relative w-full border border-stone-800 rounded-lg overflow-hidden bg-[#1a1a1a] shadow-inner landscape:max-h-[85vh]">
             {isSelectedLoading && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-lg">
                 <Loader2 className="h-10 w-10 animate-spin text-sky-500 mb-2" />
@@ -437,7 +437,7 @@ const Index = () => {
                 selectedScaleName={selectedScaleName}
                 selectedChordName={selectedChordName}
                 mode={(viewMode === 'chord' || viewMode === 'scale') ? viewMode : 'scale'}
-                onModeChange={(mode) => setViewMode(mode as any)}
+                onModeChange={(mode) => setViewMode(mode)}
                 sampler={samplers.current.piano || null}
               />
             ) : (
