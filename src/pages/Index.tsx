@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ALL_NOTES, SCALES, CHORDS, EMOTIONS, CAGED_SHAPES, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -491,9 +491,14 @@ const Index = () => {
               <h2 className="text-xl md:text-3xl font-bold text-[#b06a3b] landscape:text-xl">
                 {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` : `${selectedRoot} ${t_safe(selectedScaleName)}`}
               </h2>
-              <p className="text-sm md:text-xl text-stone-500 font-mono landscape:text-sm">
-                {activeNotesForArpeggio.join(' . ')} / {viewMode === 'chord' ? CHORDS[selectedChordName].join(',') : viewMode === 'scale' ? SCALES[selectedScaleName].join(',') : 'CAGED'}
-              </p>
+              <div className="flex flex-col gap-1">
+                <p className="text-xs md:text-base text-stone-500 font-mono landscape:text-xs">
+                  {activeNotesForArpeggio.join(' • ')}
+                </p>
+                <p className="text-[10px] md:text-xs text-[#b06a3b] font-bold uppercase tracking-widest bg-[#b06a3b]/10 px-2 py-0.5 rounded self-center md:self-start">
+                  {viewMode === 'chord' ? getScaleFormula(CHORDS[selectedChordName]) : viewMode === 'scale' ? getScaleFormula(SCALES[selectedScaleName]) : 'CAGED Shape'}
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700 scale-90 md:scale-100 landscape:scale-90">

@@ -112,6 +112,13 @@ const translations = {
     theoryTools: 'Theory & Progressions',
     practiceTools: 'Rhythm & Practice',
     virtual_desc: 'Free Play Mode: Explore the instrument without visual highlights.',
+    genre: 'Genre',
+    genreGenerator: 'Genre Progression Generator',
+    'Blues / Funk': 'Blues / Funk',
+    'Jazz / Fusion': 'Jazz / Fusion',
+    'Rock / Metal': 'Rock / Metal',
+    'Pop / Ballad': 'Pop / Ballad',
+    'Spanish / Flamenco': 'Spanish / Flamenco',
   },
   ru: {
     title: 'Мастер Ладов и Клавиш',
@@ -222,6 +229,13 @@ const translations = {
     theoryTools: 'Теория и прогрессии',
     practiceTools: 'Ритм и практика',
     virtual_desc: 'Свободный режим: Изучайте инструмент без визуальных подсказок.',
+    genre: 'Жанр',
+    genreGenerator: 'Генератор прогрессий по жанрам',
+    'Blues / Funk': 'Блюз / Фанк',
+    'Jazz / Fusion': 'Джаз / Фьюжн',
+    'Rock / Metal': 'Рок / Метал',
+    'Pop / Ballad': 'Поп / Баллада',
+    'Spanish / Flamenco': 'Испанский / Фламенко',
   }
 };
 

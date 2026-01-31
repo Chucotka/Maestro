@@ -66,13 +66,18 @@ export const SCALES = {
   "MAJOR PENTATONIC": [0, 2, 4, 7, 9],
   "MINOR PENTATONIC": [0, 3, 5, 7, 10],
   BLUES: [0, 3, 5, 6, 7, 10],
+  "BLUES MAJOR": [0, 2, 3, 4, 7, 9],
+  "BLUES MINOR": [0, 3, 5, 6, 7, 10],
   // --- Modes ---
   DORIAN: [0, 2, 3, 5, 7, 9, 10],
   PHRYGIAN: [0, 1, 3, 5, 7, 8, 10],
   LYDIAN: [0, 2, 4, 6, 7, 9, 11],
   MIXOLYDIAN: [0, 2, 4, 5, 7, 9, 10],
   LOCRIAN: [0, 1, 3, 5, 6, 8, 10],
-  // --- Exotic ---
+  // --- Exotic / Genre Specific ---
+  "JAZZ MINOR": [0, 2, 3, 5, 7, 9, 11],
+  "SPANISH GYPSY": [0, 1, 4, 5, 7, 8, 10],
+  "FLAMENCO": [0, 1, 4, 5, 7, 8, 11],
   "WHOLE TONE": [0, 2, 4, 6, 8, 10],
   "DIMINISHED (H-W)": [0, 1, 3, 4, 6, 7, 9, 10],
   "DIMINISHED (W-H)": [0, 2, 3, 5, 6, 8, 9, 11],
@@ -82,6 +87,8 @@ export const SCALES = {
   "ENIGMATIC": [0, 1, 4, 6, 8, 10, 11],
   "HUNGARIAN MINOR": [0, 2, 3, 6, 7, 8, 11],
   "HUNGARIAN MAJOR": [0, 3, 4, 6, 7, 9, 10],
+  "ORIENTAL": [0, 1, 4, 5, 6, 9, 10],
+  "BEBOP DOMINANT": [0, 2, 4, 5, 7, 9, 10, 11],
 };
 
 /**
@@ -258,46 +265,53 @@ export const getCAGEDNotes = (root: string, shapeName: string, tuning: string[])
   });
 };
 
-export const EMOTIONS = {
-  "Happy / Joyful": {
+export const GENRES = {
+  "Blues / Funk": {
+    formula: "1 - b3 - 4 - b5 - 5 - b7",
     progressions: [
-      ["I", "IV", "V", "IV"],
-      ["I", "V", "vi", "IV"],
-      ["I", "ii", "V", "I"],
+      ["I7", "IV7", "I7", "I7", "IV7", "IV7", "I7", "I7", "V7", "IV7", "I7", "V7"],
+      ["I7", "IV7", "V7"],
+      ["i7", "iv7", "v7"],
     ],
-    scales: ["MAJOR", "LYDIAN", "MAJOR PENTATONIC"]
+    scales: ["BLUES MINOR", "MIXOLYDIAN", "DORIAN"]
   },
-  "Sad / Melancholy": {
-    progressions: [
-      ["i", "VI", "III", "VII"],
-      ["i", "iv", "v", "i"],
-      ["i", "v", "VI", "iv"],
-    ],
-    scales: ["MINOR", "PHRYGIAN", "MINOR PENTATONIC"]
-  },
-  "Epic / Heroic": {
-    progressions: [
-      ["i", "VI", "VII", "i"],
-      ["I", "V", "vi", "iii", "IV", "I", "IV", "V"],
-      ["i", "iv", "VII", "III"],
-    ],
-    scales: ["MINOR", "DORIAN", "HARMONIC MINOR"]
-  },
-  "Dark / Mysterious": {
-    progressions: [
-      ["i", "bII", "i", "bII"],
-      ["i", "v", "#iv", "i"],
-      ["i", "vi", "v", "i"],
-    ],
-    scales: ["LOCRIAN", "PHRYGIAN DOMINANT", "ALTERED"]
-  },
-  "Jazz / Sophisticated": {
+  "Jazz / Fusion": {
+    formula: "1 - 2 - b3 - 4 - 5 - 6 - b7 (Dorian)",
     progressions: [
       ["ii7", "V7", "Imaj7"],
       ["Imaj7", "vi7", "ii7", "V7"],
       ["iii7", "vi7", "ii7", "V7"],
+      ["ii7b5", "V7alt", "imaj7"],
     ],
-    scales: ["DORIAN", "MIXOLYDIAN", "MELODIC MINOR"]
+    scales: ["DORIAN", "MIXOLYDIAN", "ALTERED", "LYDIAN DOMINANT"]
+  },
+  "Rock / Metal": {
+    formula: "1 - 2 - b3 - 4 - 5 - b6 - b7 (Aeolian)",
+    progressions: [
+      ["i", "VI", "VII", "i"],
+      ["i", "v", "VI", "iv"],
+      ["I", "bVII", "IV", "I"],
+      ["i", "bII", "i"],
+    ],
+    scales: ["MINOR", "PHRYGIAN", "HARMONIC MINOR", "LOCRIAN"]
+  },
+  "Pop / Ballad": {
+    formula: "1 - 2 - 3 - 4 - 5 - 6 - 7 (Major)",
+    progressions: [
+      ["I", "V", "vi", "IV"],
+      ["I", "IV", "V", "IV"],
+      ["vi", "IV", "I", "V"],
+    ],
+    scales: ["MAJOR", "MAJOR PENTATONIC", "LYDIAN"]
+  },
+  "Spanish / Flamenco": {
+    formula: "1 - b2 - 3 - 4 - 5 - b6 - b7 (Phrygian Dominant)",
+    progressions: [
+      ["i", "bII", "III", "iv", "v", "bVI", "bVII"],
+      ["i", "bII", "i"],
+      ["iv", "III", "bII", "i"],
+    ],
+    scales: ["SPANISH GYPSY", "FLAMENCO", "PHRYGIAN DOMINANT"]
   }
 };
 
@@ -330,6 +344,15 @@ export const romanToChord = (roman: string, rootNote: string, isMajorKey: boolea
     "IVmaj7": { degree: 3, type: "Major 7th" },
     "V7": { degree: 4, type: "Dominant 7th" },
     "vi7": { degree: 5, type: "Minor 7th" },
+    "I7": { degree: 0, type: "Dominant 7th" },
+    "IV7": { degree: 3, type: "Dominant 7th" },
+    "i7": { degree: 0, type: "Minor 7th" },
+    "iv7": { degree: 3, type: "Minor 7th" },
+    "v7": { degree: 4, type: "Minor 7th" },
+    "ii7b5": { degree: 1, type: "Half-Diminished 7" },
+    "V7alt": { degree: 4, type: "Augmented 7th" },
+    "imaj7": { degree: 0, type: "Minor Major 7th" },
+    "bVII": { degree: 6, type: "Major" },
     "bII": { degree: 1, type: "Major" }, // Neapolitan
     "#iv": { degree: 6, type: "Minor" }, // For mysterious
   };
@@ -349,7 +372,7 @@ export const romanToChord = (roman: string, rootNote: string, isMajorKey: boolea
 export const getIntervalName = (semitones: number): string => {
   const norm = semitones % 12;
   const names: Record<number, string> = {
-    0: 'R',
+    0: '1',
     1: 'b2',
     2: '2',
     3: 'b3',
@@ -368,5 +391,9 @@ export const getIntervalName = (semitones: number): string => {
   if (semitones === 17) return '11';
   if (semitones === 21) return '13';
 
-  return names[norm] || 'R';
+  return names[norm] || '1';
+};
+
+export const getScaleFormula = (intervals: number[]): string => {
+  return intervals.map(i => getIntervalName(i)).join(' - ');
 };
