@@ -27,7 +27,7 @@ interface FretboardProps {
   onTuningChange: (tuning: string) => void;
   mode: string;
   sampler: Tone.Sampler | null;
-  instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass';
+  instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass' | 'ukulele';
   onModeChange?: (mode: string) => void;
   onNoteClick?: (noteName: string, noteWithOctave: string) => void;
 }
@@ -69,7 +69,7 @@ const Fretboard: React.FC<FretboardProps> = ({
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
   const activeNotesList = useMemo(() => {
-    if (mode === 'virtual') return [];
+    if (mode === 'virtual' || mode === 'quiz') return [];
     if (mode === 'caged') {
       return getChordNotes(selectedRoot, CHORDS['Major']);
     }
@@ -86,9 +86,13 @@ const Fretboard: React.FC<FretboardProps> = ({
 
   useLayoutEffect(() => {
     const isCurrentlyBassTuning = selectedTuningName.startsWith("Bass");
+    const isCurrentlyUkuleleTuning = selectedTuningName.startsWith("Ukulele");
+
     if (instrumentType === 'bass' && !isCurrentlyBassTuning) {
       onTuningChange("Bass (Standard)");
-    } else if (instrumentType !== 'bass' && isCurrentlyBassTuning) {
+    } else if (instrumentType === 'ukulele' && !isCurrentlyUkuleleTuning) {
+      onTuningChange("Ukulele (Std)");
+    } else if (instrumentType !== 'bass' && instrumentType !== 'ukulele' && (isCurrentlyBassTuning || isCurrentlyUkuleleTuning)) {
       onTuningChange("Standard");
     }
   }, [instrumentType, selectedTuningName, onTuningChange]);

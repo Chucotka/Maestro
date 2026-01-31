@@ -28,6 +28,8 @@ export const GUITAR_TUNINGS = {
   "Bass (Standard)": ["E1", "A1", "D2", "G2"],
   "Bass (5-String)": ["B0", "E1", "A1", "D2", "G2"],
   "Bass (Drop D)":  ["D1", "A1", "D2", "G2"],
+  "Ukulele (Std)":  ["G4", "C4", "E4", "A4"],
+  "Ukulele (Low G)": ["G3", "C4", "E4", "A4"],
 };
 
 export const CHORDS = {

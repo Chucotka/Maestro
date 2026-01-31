@@ -40,7 +40,7 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
     await Tone.start();
 
     // Create actual notes with octaves for playback, ensuring they go up
-    let currentOctave = instrumentType === 'bass' ? 1 : 3;
+    let currentOctave = instrumentType === 'bass' ? 1 : instrumentType === 'ukulele' ? 4 : 3;
     let lastNoteIndex = -1;
 
     const playNotes = notes.map((n) => {
@@ -92,10 +92,12 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
           variant={isPlaying ? "destructive" : "default"}
           size="icon"
           onClick={isPlaying ? stopArpeggio : startArpeggio}
+          disabled={!sampler}
           className={cn("shrink-0", !isPlaying && "bg-[#b06a3b] hover:bg-[#8e5630]")}
         >
           {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
+        {!sampler && <span className="text-[10px] text-stone-500 animate-pulse">{t('loading')}</span>}
 
         <div className="flex-1 flex flex-col gap-2">
           <div className="flex justify-between text-xs text-gray-400">

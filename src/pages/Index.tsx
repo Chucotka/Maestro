@@ -27,7 +27,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 
-type InstrumentType = 'guitar' | 'piano' | 'clean' | 'distortion' | 'bass';
+type InstrumentType = 'guitar' | 'piano' | 'clean' | 'distortion' | 'bass' | 'ukulele';
 
 const PIANO_URLS = {
   "A0": "A0.mp3", "C1": "C1.mp3", "Eb1": "Eb1.mp3", "Gb1": "Gb1.mp3",
@@ -42,6 +42,12 @@ const PIANO_URLS = {
 
 const GUITAR_URLS = {
   "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
+  "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
+  "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
+  "A5": "A5.mp3", "C6": "C6.mp3"
+};
+
+const UKULELE_URLS = {
   "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
   "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
   "A5": "A5.mp3", "C6": "C6.mp3"
@@ -103,7 +109,7 @@ const Index = () => {
 
     if (notes.length === 0) return;
 
-    let currentOctave = inst === 'bass' ? 1 : 3;
+    let currentOctave = inst === 'bass' ? 1 : inst === 'ukulele' ? 4 : 3;
     let lastIdx = -1;
     const playNotes = notes.map(n => {
       const idx = ALL_NOTES.indexOf(n);
@@ -152,7 +158,7 @@ const Index = () => {
     setLoadingInstruments(prev => new Set(prev).add(inst));
 
     try {
-      const urls = inst === 'piano' ? PIANO_URLS : inst === 'bass' ? BASS_URLS : GUITAR_URLS;
+      const urls = inst === 'piano' ? PIANO_URLS : inst === 'bass' ? BASS_URLS : inst === 'ukulele' ? UKULELE_URLS : GUITAR_URLS;
       let baseUrl = "";
 
       switch(inst) {
@@ -161,6 +167,7 @@ const Index = () => {
         case 'clean': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/"; break;
         case 'distortion': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/distortion_guitar-mp3/"; break;
         case 'bass': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_bass_finger-mp3/"; break;
+        case 'ukulele': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/ukulele-mp3/"; break;
       }
 
       await new Promise<void>((resolve, reject) => {
@@ -306,6 +313,7 @@ const Index = () => {
                 <SelectItem value="clean">{t('clean')}</SelectItem>
                 <SelectItem value="distortion">{t('distortion')}</SelectItem>
                 <SelectItem value="bass">{t('bass')}</SelectItem>
+                <SelectItem value="ukulele">{t('ukulele')}</SelectItem>
                 <SelectItem value="piano">{t('piano')}</SelectItem>
               </SelectContent>
             </Select>
