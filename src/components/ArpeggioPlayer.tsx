@@ -45,6 +45,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
 
     const playNotes = notes.map((n) => {
       const noteIndex = ALL_NOTES.indexOf(n);
+      // For Ukulele (re-entrant tuning), if it's the first string G4, we might not want standard ascending
+      // But for Arpeggio Player, logical ascending is usually preferred.
       if (noteIndex !== -1 && noteIndex < lastNoteIndex) {
         currentOctave++;
       }

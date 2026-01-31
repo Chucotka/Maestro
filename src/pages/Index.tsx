@@ -214,7 +214,13 @@ const Index = () => {
     if (isAudioEnabled) {
       loadInstrument(selectedInstrument);
     }
-  }, [selectedInstrument, isAudioEnabled, loadInstrument]);
+
+    // Auto-switch away from CAGED if ukulele is selected
+    if (selectedInstrument === 'ukulele' && viewMode === 'caged') {
+      setViewMode('scale');
+      toast.info("CAGED mode is for guitar. Switched to Scale mode.");
+    }
+  }, [selectedInstrument, isAudioEnabled, loadInstrument, viewMode]);
 
   const isSelectedLoading = loadingInstruments.has(selectedInstrument);
 
@@ -258,7 +264,7 @@ const Index = () => {
             { id: 'quiz', label: t('quiz'), action: () => setViewMode('quiz') },
             { id: 'finder', label: t('finder'), action: () => setViewMode('finder') },
             { id: 'scales', label: t('scales'), action: () => setViewMode('scale') },
-            { id: 'caged', label: t('caged'), action: () => setViewMode('caged') },
+            { id: 'caged', label: t('caged'), action: () => setViewMode('caged'), hidden: selectedInstrument === 'ukulele' },
             { id: 'arpeggios', label: t('arpeggios'), action: () => { arpeggioRef.current?.scrollIntoView({ behavior: 'smooth' }); toast.info("Arpeggiator"); } },
             { id: 'notes', label: t('notes'), action: () => setViewMode('notes') },
             {
@@ -293,7 +299,8 @@ const Index = () => {
                 variant="ghost"
                 className={cn(
                   "text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4 text-xs md:text-sm",
-                  (viewMode === 'chord' && item.id === 'chords') || (viewMode === 'scale' && item.id === 'scales') ? "bg-stone-800 text-white" : ""
+                  (viewMode === 'chord' && item.id === 'chords') || (viewMode === 'scale' && item.id === 'scales') ? "bg-stone-800 text-white" : "",
+                  (item as { hidden?: boolean }).hidden ? "hidden" : ""
                 )}
                 onClick={item.action}
               >

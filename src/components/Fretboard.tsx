@@ -9,14 +9,19 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from '@/lib/i18n';
 
-const NUM_FRETS = 24;
+const DEFAULT_NUM_FRETS = 24;
+const UKULELE_NUM_FRETS = 15;
+
 const DEFAULT_STRING_HEIGHT_PX = 45;
 const LANDSCAPE_STRING_HEIGHT_PX = 32;
 const FRET_NUMBER_HEIGHT_PX = 40;
 const STRING_LABEL_WIDTH_PX = 30;
 
-const FRET_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
-const FRET_DOT_FRETS_DOUBLE = [12, 24];
+const GUITAR_DOT_FRETS_SINGLE = [3, 5, 7, 9, 15, 17, 19, 21];
+const GUITAR_DOT_FRETS_DOUBLE = [12, 24];
+
+const UKULELE_DOT_FRETS_SINGLE = [5, 7, 10, 15];
+const UKULELE_DOT_FRETS_DOUBLE = [12];
 
 interface FretboardProps {
   selectedRoot: string;
@@ -59,6 +64,10 @@ const Fretboard: React.FC<FretboardProps> = ({
     window.addEventListener('resize', updateOrientation);
     return () => window.removeEventListener('resize', updateOrientation);
   }, []);
+
+  const numFrets = instrumentType === 'ukulele' ? UKULELE_NUM_FRETS : DEFAULT_NUM_FRETS;
+  const dotsSingle = instrumentType === 'ukulele' ? UKULELE_DOT_FRETS_SINGLE : GUITAR_DOT_FRETS_SINGLE;
+  const dotsDouble = instrumentType === 'ukulele' ? UKULELE_DOT_FRETS_DOUBLE : GUITAR_DOT_FRETS_DOUBLE;
 
   // Responsive fixed widths to prevent feedback loops and ensure visibility
   const fretWidth = isLandscape ? 65 : 52;
@@ -112,7 +121,7 @@ const Fretboard: React.FC<FretboardProps> = ({
     displayTuning.forEach((openStringNote, stringIndex) => {
       const stringNum = displayTuning.length - stringIndex;
 
-      for (let fret = 0; fret <= NUM_FRETS; fret++) {
+      for (let fret = 0; fret <= numFrets; fret++) {
         const noteWithOctave = getNoteAtFret(openStringNote, fret);
         const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
         
@@ -159,7 +168,7 @@ const Fretboard: React.FC<FretboardProps> = ({
       }
     });
     return notes;
-  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, selectedChordName, selectedScaleName]);
+  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, selectedChordName, selectedScaleName, numFrets]);
 
   const handleNoteClick = (noteName: string, noteWithOctave: string) => {
     if (sampler && Tone.context.state === 'running') {
@@ -186,7 +195,7 @@ const Fretboard: React.FC<FretboardProps> = ({
         </div>
       </div>
       <ScrollArea className="w-full whitespace-nowrap border-none">
-        <div className="p-4" style={{ width: `${NUM_FRETS * fretWidth + 3 * STRING_LABEL_WIDTH_PX + 40}px` }}>
+        <div className="p-4" style={{ width: `${numFrets * fretWidth + 3 * STRING_LABEL_WIDTH_PX + 40}px` }}>
         <div className="flex">
           {/* Spacer for first label column */}
           <div className="flex-shrink-0" style={{ width: `${STRING_LABEL_WIDTH_PX}px`, height: isLandscape ? '24px' : `${FRET_NUMBER_HEIGHT_PX}px` }} />
@@ -197,8 +206,8 @@ const Fretboard: React.FC<FretboardProps> = ({
           >
             0
           </div>
-          {/* Fret numbers 1-24 */}
-          {Array.from({ length: NUM_FRETS }).map((_, i) => {
+          {/* Fret numbers 1-N */}
+          {Array.from({ length: numFrets }).map((_, i) => {
             const fretNumber = i + 1;
             return (
               <div
@@ -261,7 +270,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             ref={fretboardContainerRef}
             className="relative bg-[#3d1c13] transition-colors duration-300 border-y border-stone-900 overflow-hidden"
             style={{ 
-              width: `${NUM_FRETS * fretWidth}px`,
+              width: `${numFrets * fretWidth}px`,
               height: `${displayTuning.length * stringHeight}px`,
               backgroundImage: `linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)`,
               backgroundSize: `100% ${stringHeight}px, ${fretWidth}px 100%`
@@ -272,7 +281,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             {/* Nut */}
             <div className="absolute left-0 top-0 h-full w-2 bg-stone-900 z-20" />
 
-            {Array.from({ length: NUM_FRETS }).map((_, i) => (
+            {Array.from({ length: numFrets }).map((_, i) => (
               <div
                 key={`fret-line-${i + 1}`}
                 className="absolute top-0 h-full w-[2px] bg-stone-900/80"
@@ -280,7 +289,7 @@ const Fretboard: React.FC<FretboardProps> = ({
               />
             ))}
 
-            {FRET_DOT_FRETS_SINGLE.map((fret) => (
+            {dotsSingle.map((fret) => (
               <div
                 key={`dot-single-${fret}`}
                 className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
@@ -291,7 +300,7 @@ const Fretboard: React.FC<FretboardProps> = ({
                 }}
               />
             ))}
-            {FRET_DOT_FRETS_DOUBLE.map((fret) => (
+            {dotsDouble.map((fret) => (
               <React.Fragment key={`dot-double-${fret}`}>
                 <div
                   className="absolute rounded-full bg-stone-400/50 dark:bg-stone-500/50 w-2 h-2 md:w-3 md:h-3"
@@ -341,13 +350,19 @@ const Fretboard: React.FC<FretboardProps> = ({
                 );
               })}
 
-            {displayTuning.map((_, i) => (
-              <div
-                key={`string-line-${i}`}
-                className="absolute left-0 w-full h-[1.5px] bg-black/60 shadow-sm"
-                style={{ top: `${i * stringHeight + stringHeight / 2}px`, transform: 'translateY(-50%)' }}
-              />
-            ))}
+            {displayTuning.map((_, i) => {
+              const isThick = (instrumentType === 'guitar' || instrumentType === 'clean' || instrumentType === 'distortion') && i >= 3;
+              return (
+                <div
+                  key={`string-line-${i}`}
+                  className={cn(
+                    "absolute left-0 w-full bg-black/60 shadow-sm",
+                    isThick ? "h-[2.5px]" : "h-[1.5px]"
+                  )}
+                  style={{ top: `${i * stringHeight + stringHeight / 2}px`, transform: 'translateY(-50%)' }}
+                />
+              );
+            })}
           </div>
 
           <div className="flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
