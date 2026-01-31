@@ -215,7 +215,9 @@ const Index = () => {
     ? getScaleNotes(selectedRoot, SCALES[selectedScaleName])
     : viewMode === 'chord'
     ? getChordNotes(selectedRoot, CHORDS[selectedChordName])
-    : getChordNotes(selectedRoot, CHORDS['Major']);
+    : viewMode === 'caged'
+    ? getChordNotes(selectedRoot, CHORDS['Major'])
+    : getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
 
   if (!isAudioEnabled) {
     return (
@@ -258,7 +260,7 @@ const Index = () => {
               dropdown: GUITAR_TUNINGS,
               onSelect: (val: string) => setSelectedTuningName(val)
             },
-            { id: 'virtual', label: t('virtual'), action: () => setViewMode('virtual') }
+            { id: 'virtual', label: t('virtual'), action: () => { setViewMode('virtual'); toast.info(t('virtual_desc')); } }
           ].map((item) => (
             item.dropdown ? (
               <DropdownMenu key={item.id}>

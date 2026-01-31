@@ -86,7 +86,6 @@ const Metronome: React.FC = () => {
 
   const toggleMetronome = async () => {
     if (isPlaying) {
-      Tone.Transport.stop();
       if (loopRef.current !== null) {
         Tone.Transport.clear(loopRef.current);
         loopRef.current = null;

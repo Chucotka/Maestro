@@ -69,6 +69,7 @@ const Fretboard: React.FC<FretboardProps> = ({
   const displayTuning = useMemo(() => [...currentTuning].reverse(), [currentTuning]);
 
   const activeNotesList = useMemo(() => {
+    if (mode === 'virtual') return [];
     if (mode === 'caged') {
       return getChordNotes(selectedRoot, CHORDS['Major']);
     }

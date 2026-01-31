@@ -57,6 +57,7 @@ const Piano: React.FC<PianoProps> = ({
   const pianoContainerRef = useRef<HTMLDivElement>(null);
 
   const activeNotesList = useMemo(() => {
+    if (mode === 'virtual') return [];
     if (mode === 'chord' && selectedChordName) {
       return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
     }

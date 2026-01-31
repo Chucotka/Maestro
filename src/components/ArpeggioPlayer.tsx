@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
 import { Play, Square, FastForward, Rewind } from 'lucide-react';
@@ -18,23 +18,26 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
   const [isPlaying, setIsPlaying] = useState(false);
   const [tempo, setTempo] = useState(120);
   const [direction, setDirection] = useState<'up' | 'down' | 'updown'>('up');
-  const partRef = useRef<Tone.Part | null>(null);
+  const sequenceRef = useRef<Tone.Sequence | null>(null);
 
-  const stopArpeggio = () => {
+  const stopArpeggio = useCallback(() => {
     setIsPlaying(false);
-    if (partRef.current) {
-      partRef.current.stop();
-      partRef.current.dispose();
-      partRef.current = null;
+    if (sequenceRef.current) {
+      sequenceRef.current.stop();
+      sequenceRef.current.dispose();
+      sequenceRef.current = null;
     }
-    Tone.Transport.stop();
-  };
+    // We don't stop the whole Transport here to avoid killing the metronome
+  }, []);
 
-  const startArpeggio = async () => {
-    if (!sampler || notes.length === 0) return;
+  const startArpeggio = useCallback(async () => {
+    if (!sampler) {
+      console.warn("Sampler not ready for arpeggiator");
+      return;
+    }
+    if (notes.length === 0) return;
 
     await Tone.start();
-    setIsPlaying(true);
 
     // Create actual notes with octaves for playback, ensuring they go up
     let currentOctave = instrumentType === 'bass' ? 1 : 3;
@@ -49,31 +52,37 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
       return `${n}${currentOctave}`;
     });
 
-    let sequence = [...playNotes];
-    if (direction === 'down') sequence.reverse();
-    if (direction === 'updown') sequence = [...playNotes, ...[...playNotes].reverse().slice(1, -1)];
+    let notesToPlay = [...playNotes];
+    if (direction === 'down') notesToPlay.reverse();
+    if (direction === 'updown') notesToPlay = [...playNotes, ...[...playNotes].reverse().slice(1, -1)];
 
     Tone.Transport.bpm.value = tempo;
 
-    // Use "8n" as a base for timing
-    partRef.current = new Tone.Part((time, note) => {
+    sequenceRef.current = new Tone.Sequence((time, note) => {
       sampler.triggerAttackRelease(note, "8n", time);
-    }, sequence.map((note, i) => [Tone.Time("8n").toSeconds() * i, note]));
+    }, notesToPlay, "8n");
 
-    partRef.current.loop = true;
-    partRef.current.loopEnd = Tone.Time("8n").toSeconds() * sequence.length;
+    sequenceRef.current.start(0);
 
     if (Tone.Transport.state !== 'started') {
       Tone.Transport.start();
     }
-    partRef.current.start(0);
-  };
+    setIsPlaying(true);
+  }, [sampler, notes, direction, tempo, instrumentType]);
+
+  // Handle prop changes while playing
+  useEffect(() => {
+    if (isPlaying) {
+      stopArpeggio();
+      startArpeggio();
+    }
+  }, [notes, direction, tempo, sampler, instrumentType, isPlaying, stopArpeggio, startArpeggio]);
 
   useEffect(() => {
     return () => {
       stopArpeggio();
     };
-  }, []);
+  }, [stopArpeggio]);
 
   return (
     <div className="flex flex-col items-center gap-4 p-4 bg-[#1a1a1a] border border-stone-800 rounded-lg shadow-xl w-full">
