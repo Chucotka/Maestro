@@ -120,6 +120,9 @@ const translations = {
     'Rock / Metal': 'Rock / Metal',
     'Pop / Ballad': 'Pop / Ballad',
     'Spanish / Flamenco': 'Spanish / Flamenco',
+    connect_guitar: 'Connect Guitar',
+    stop_listening: 'Stop Listening',
+    mic_enabled: 'Microphone enabled. Play your guitar!',
   },
   ru: {
     title: 'Мастер Ладов и Клавиш',
@@ -238,6 +241,9 @@ const translations = {
     'Rock / Metal': 'Рок / Метал',
     'Pop / Ballad': 'Поп / Баллада',
     'Spanish / Flamenco': 'Испанский / Фламенко',
+    connect_guitar: 'Подключить гитару',
+    stop_listening: 'Остановить прослушивание',
+    mic_enabled: 'Микрофон включен. Играйте на гитаре!',
   }
 };
 

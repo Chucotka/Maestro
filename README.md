@@ -5,6 +5,7 @@ An interactive musical tool to visualize scales and modes on a guitar fretboard 
 ## Features
 
 -   **Dual Instruments:** Switch seamlessly between a guitar fretboard and a piano keyboard.
+-   **Real-time Guitar Connection:** Connect your physical guitar via microphone and see the notes you play reflected on the virtual fretboard and piano.
 -   **Scale & Root Selection:** Choose any root note and from a wide variety of scales and modes (Major, Minor, Pentatonic, etc.).
 -   **Interactive Highlighting:** Notes belonging to the selected scale are clearly highlighted. The root note is specially marked.
 -   **Audio Playback:** Click on any note to hear its sound, powered by Tone.js.
@@ -45,4 +46,3 @@ To run this project locally, follow these steps:
     The application will be available at `http://localhost:8080`.
 
 ---
-Made with [Dyad](https://www.dyad.sh/)

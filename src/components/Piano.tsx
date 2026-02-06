@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from '@/lib/i18n';
+import { DetectedNote } from '@/hooks/useAudioInput';
 
 interface PianoProps {
   selectedRoot: string;
@@ -15,6 +16,7 @@ interface PianoProps {
   mode: 'scale' | 'chord';
   sampler: Tone.Sampler | null;
   onModeChange?: (mode: 'scale' | 'chord') => void;
+  detectedNote?: DetectedNote | null;
 }
 
 interface PianoKey {
@@ -47,7 +49,8 @@ const Piano: React.FC<PianoProps> = ({
   selectedChordName,
   mode,
   sampler,
-  onModeChange
+  onModeChange,
+  detectedNote
 }) => {
   const { t } = useI18n();
   const [showNoteNames, setShowNoteNames] = useState(false);
@@ -107,6 +110,7 @@ const Piano: React.FC<PianoProps> = ({
                 {whiteKeys.map(key => {
                   const isHighlighted = activeNotesList.includes(key.note);
                   const isRoot = isHighlighted && key.note === selectedRoot;
+                  const isHeard = detectedNote ? detectedNote.name === key.note : false;
 
                   let label = '';
                   if (showNoteNames) label = key.note;
@@ -125,6 +129,7 @@ const Piano: React.FC<PianoProps> = ({
                       className={cn(
                         'flex-shrink-0 flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 bg-white hover:bg-slate-100',
                         activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b]/50 scale-y-[0.98] z-20',
+                        isHeard && !activeNotes.has(key.noteWithOctave) && 'ring-2 ring-yellow-400 z-10 shadow-[0_0_10px_rgba(250,204,21,0.5)]',
                         isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#b06a3b]/20': isRoot, 'bg-[#e5d5c0]/20': !isRoot }
                       )}
                       style={{ width: `${keyDimensions.whiteKeyWidth}px`, backgroundColor: '#e5d5c0' }}
@@ -140,6 +145,7 @@ const Piano: React.FC<PianoProps> = ({
               {blackKeys.map(key => {
                 const isHighlighted = activeNotesList.includes(key.note);
                 const isRoot = isHighlighted && key.note === selectedRoot;
+                const isHeard = detectedNote ? detectedNote.name === key.note : false;
 
                 const precedingWhiteNote = key.note === 'C#' ? 'C' :
                                            key.note === 'D#' ? 'D' :
@@ -166,6 +172,7 @@ const Piano: React.FC<PianoProps> = ({
                     className={cn(
                       'absolute flex items-start justify-center pt-1 border-stone-800 rounded-b-sm transition-all duration-100 z-10 bg-stone-900 hover:bg-stone-800 border pointer-events-auto',
                       activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b] scale-y-[0.95] z-30',
+                      isHeard && !activeNotes.has(key.noteWithOctave) && 'ring-2 ring-yellow-400 z-20 shadow-[0_0_10px_rgba(250,204,21,0.5)]',
                       isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#4a2e1c]': isRoot, 'bg-[#2a2a2a]': !isRoot }
                     )}
                     style={{

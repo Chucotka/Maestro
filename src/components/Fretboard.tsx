@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from '@/lib/i18n';
+import { DetectedNote } from '@/hooks/useAudioInput';
 
 const DEFAULT_NUM_FRETS = 24;
 const UKULELE_NUM_FRETS = 15;
@@ -36,6 +37,7 @@ interface FretboardProps {
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass' | 'ukulele';
   onModeChange?: (mode: string) => void;
   onNoteClick?: (noteName: string, noteWithOctave: string) => void;
+  detectedNote?: DetectedNote | null;
 }
 
 const Fretboard: React.FC<FretboardProps> = ({
@@ -48,7 +50,8 @@ const Fretboard: React.FC<FretboardProps> = ({
   mode,
   sampler,
   instrumentType,
-  onModeChange
+  onModeChange,
+  detectedNote
 }) => {
   const { t } = useI18n();
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
@@ -117,6 +120,7 @@ const Fretboard: React.FC<FretboardProps> = ({
       isScaleNote: boolean;
       sequenceNumber: number | null;
       isRoot: boolean;
+      isHeard: boolean;
     }[] = [];
 
     displayTuning.forEach((openStringNote, stringIndex) => {
@@ -156,6 +160,7 @@ const Fretboard: React.FC<FretboardProps> = ({
         }
 
         const isRoot = isScaleNote && noteName === selectedRoot;
+        const isHeard = detectedNote ? detectedNote.name === noteName : false;
 
         notes.push({
           stringIndex,
@@ -165,11 +170,12 @@ const Fretboard: React.FC<FretboardProps> = ({
           isScaleNote,
           sequenceNumber: sequenceNumber as number | string | null,
           isRoot,
+          isHeard,
         });
       }
     });
     return notes;
-  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, selectedChordName, selectedScaleName, numFrets]);
+  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, selectedChordName, selectedScaleName, numFrets, detectedNote]);
 
   const handleNoteClick = (noteName: string, noteWithOctave: string) => {
     if (sampler && Tone.context.state === 'running') {
@@ -249,17 +255,19 @@ const Fretboard: React.FC<FretboardProps> = ({
                   className="relative flex items-center justify-center text-xs font-bold text-gray-400"
                   style={{ height: `${stringHeight}px` }}
                 >
-                  {shouldRender ? (
-                    <div className="z-30">
+                  {(shouldRender || openNote?.isHeard) && (
+                    <div className={cn("z-30 transition-all duration-200", openNote?.isHeard && !shouldRender && "scale-110")}>
                       <NoteMarker
                         content={markerContent}
-                        isRoot={openNote.isRoot}
-                        isHighlighted={openNote.isScaleNote}
-                      size={markerSize * 0.85}
-                        onClick={() => handleNoteClick(openNote.noteName, openNote.noteWithOctave)}
+                        isRoot={openNote!.isRoot}
+                        isHighlighted={openNote!.isScaleNote || openNote!.isHeard}
+                        size={markerSize * 0.85}
+                        className={cn(openNote!.isHeard && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_15px_rgba(250,204,21,0.6)]")}
+                        onClick={() => handleNoteClick(openNote!.noteName, openNote!.noteWithOctave)}
                       />
                     </div>
-                  ) : (
+                  )}
+                  {!shouldRender && !openNote?.isHeard && (
                     <span className="opacity-30">{note.match(/[A-G]#?/)?.[0] || ''}</span>
                   )}
                 </div>
@@ -327,7 +335,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             {fretboardNotes
               .filter((note) => note.fretNumber > 0)
               .map((note, index) => {
-                const shouldRender = showAllNotes || note.isScaleNote;
+                const shouldRender = showAllNotes || note.isScaleNote || note.isHeard;
                 if (!shouldRender) return null;
 
                 const leftPos = note.fretNumber * fretWidth - fretWidth / 2;
@@ -337,14 +345,18 @@ const Fretboard: React.FC<FretboardProps> = ({
                 return (
                   <div
                     key={`note-fretted-${index}`}
-                    className="absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `${leftPos}px`, top: `${topPos}px`, zIndex: 10 }}
+                    className={cn(
+                      "absolute -translate-x-1/2 -translate-y-1/2 z-10 transition-all duration-200",
+                      note.isHeard && !note.isScaleNote && "scale-110 z-20"
+                    )}
+                    style={{ left: `${leftPos}px`, top: `${topPos}px` }}
                   >
                     <NoteMarker
                       content={markerContent}
                       isRoot={note.isRoot}
-                      isHighlighted={note.isScaleNote}
+                      isHighlighted={note.isScaleNote || note.isHeard}
                       size={markerSize}
+                      className={cn(note.isHeard && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_15px_rgba(250,204,21,0.6)]")}
                       onClick={() => handleNoteClick(note.noteName, note.noteWithOctave)}
                     />
                   </div>

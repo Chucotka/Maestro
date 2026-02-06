@@ -7,7 +7,7 @@ import Metronome from "@/components/Metronome";
 import { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
-import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2, ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2, ChevronLeft, ChevronRight, Settings, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,6 +26,7 @@ import { useTheme } from "next-themes";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { useAudioInput } from "@/hooks/useAudioInput";
 
 type InstrumentType = 'guitar' | 'piano' | 'clean' | 'distortion' | 'bass' | 'ukulele';
 
@@ -75,6 +76,8 @@ const Index = () => {
   const [volume, setVolume] = useState(0.8);
   const [searchQuery, setSearchQuery] = useState('');
   const [quizTarget, setQuizTarget] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const detectedNote = useAudioInput(isListening);
   const { theme, setTheme } = useTheme();
   
   const samplers = useRef<Partial<Record<InstrumentType, Tone.Sampler>>>({});
@@ -309,6 +312,23 @@ const Index = () => {
             )
           ))}
           <div className="flex-grow"></div>
+
+          <Button
+            variant={isListening ? "destructive" : "outline"}
+            size="sm"
+            className={cn(
+              "gap-2 font-bold h-8 transition-all",
+              isListening ? "animate-pulse" : "bg-[#2a2a2a] border-stone-700 text-gray-300"
+            )}
+            onClick={() => {
+              setIsListening(!isListening);
+              if (!isListening) toast.success(t('mic_enabled') || "Microphone enabled. Play your guitar!");
+            }}
+          >
+            {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+            <span className="hidden sm:inline">{isListening ? t('stop_listening') || "Stop Listening" : t('connect_guitar') || "Connect Guitar"}</span>
+          </Button>
+
           <div className="flex items-center gap-2 px-2 border-l border-stone-700 ml-2">
             <Label className="text-[10px] text-stone-500 uppercase font-bold hidden md:block">{t('instrument')}</Label>
             <Select value={selectedInstrument} onValueChange={(val) => setSelectedInstrument(val as InstrumentType)}>
@@ -456,6 +476,7 @@ const Index = () => {
                 mode={(viewMode === 'chord' || viewMode === 'scale') ? viewMode : 'scale'}
                 onModeChange={(mode) => setViewMode(mode)}
                 sampler={samplers.current.piano || null}
+                detectedNote={detectedNote}
               />
             ) : (
               <div className="relative">
@@ -470,6 +491,7 @@ const Index = () => {
                   onModeChange={setViewMode}
                   instrumentType={selectedInstrument}
                   sampler={samplers.current[selectedInstrument] || null}
+                  detectedNote={detectedNote}
                   onNoteClick={(noteName) => {
                     if (viewMode === 'quiz' && quizTarget) {
                       if (noteName === quizTarget) {
