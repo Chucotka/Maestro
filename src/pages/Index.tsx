@@ -7,7 +7,7 @@ import Metronome from "@/components/Metronome";
 import { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
-import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Loader2, ChevronLeft, ChevronRight, Settings, Mic, MicOff } from "lucide-react";
+import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Square, Pause, Loader2, ChevronLeft, ChevronRight, Settings, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import {
@@ -83,8 +83,34 @@ const Index = () => {
   const samplers = useRef<Partial<Record<InstrumentType, Tone.Sampler>>>({});
   const arpeggioRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const isPlayingRef = useRef(false);
+  const playbackPartRef = useRef<Tone.Part | null>(null);
+  const stopTimeoutRef = useRef<number | null>(null);
 
-  const playCurrent = useCallback(() => {
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  const stopCurrent = useCallback(() => {
+    if (playbackPartRef.current) {
+      playbackPartRef.current.stop();
+      playbackPartRef.current.dispose();
+      playbackPartRef.current = null;
+    }
+    if (stopTimeoutRef.current !== null) {
+      Tone.Transport.clear(stopTimeoutRef.current);
+      stopTimeoutRef.current = null;
+    }
+    setIsPlaying(false);
+  }, []);
+
+  const playCurrent = useCallback((forceStart: boolean | React.MouseEvent = false) => {
+    const isForced = forceStart === true;
+    if (!isForced && isPlayingRef.current) {
+      stopCurrent();
+      return;
+    }
+
     const inst = selectedInstrument;
     const sampler = samplers.current[inst];
     if (!sampler || Tone.context.state !== 'running') {
@@ -121,26 +147,52 @@ const Index = () => {
       return `${n}${currentOctave}`;
     });
 
+    if (playbackPartRef.current) {
+      playbackPartRef.current.dispose();
+    }
+
     if (isChord) {
       sampler.triggerAttackRelease(playNotes, "2n");
+      // For chords, it's short, but we can still set isPlaying for a moment
+      setIsPlaying(true);
+      setTimeout(() => setIsPlaying(false), 2000);
     } else {
-      // Play scale ascending
-      const now = Tone.now() + 0.1;
-      playNotes.forEach((note, i) => {
-        sampler.triggerAttackRelease(note, "8n", now + i * 0.25);
-      });
+      const partEvents = playNotes.map((note, i) => ({ time: i * 0.25, note }));
+
       // Add the root note an octave higher at the end for completion
       const rootIdx = ALL_NOTES.indexOf(notes[0]);
       let finalOctave = currentOctave;
       if (rootIdx < lastIdx) finalOctave++;
-      sampler.triggerAttackRelease(`${notes[0]}${finalOctave}`, "8n", now + notes.length * 0.25);
+      partEvents.push({ time: notes.length * 0.25, note: `${notes[0]}${finalOctave}` });
+
+      playbackPartRef.current = new Tone.Part((time, event) => {
+        sampler.triggerAttackRelease(event.note, "8n", time);
+      }, partEvents).start(0);
+
+      playbackPartRef.current.onstep = (time, event) => {
+        // Optional: track progress
+      };
+
+      const duration = (partEvents.length) * 0.25;
+
+      setIsPlaying(true);
+
+      if (Tone.Transport.state !== 'started') {
+        Tone.Transport.start();
+      }
+
+      // Automatically stop after duration
+      stopTimeoutRef.current = Tone.Transport.scheduleOnce(() => {
+        setIsPlaying(false);
+        stopTimeoutRef.current = null;
+      }, `+${duration + 0.5}`);
     }
-  }, [selectedInstrument, selectedRoot, selectedChordName, selectedScaleName, viewMode, selectedCagedShape]);
+  }, [selectedInstrument, selectedRoot, selectedChordName, selectedScaleName, viewMode, selectedCagedShape, stopCurrent]);
 
   // Auto-play when root or type changed
   useEffect(() => {
     if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled) {
-      playCurrent();
+      playCurrent(true); // forceStart to avoid toggle during auto-play
     }
   }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled, playCurrent]);
 
@@ -541,11 +593,15 @@ const Index = () => {
             <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700 scale-90 md:scale-100 landscape:scale-90">
               <Button variant="ghost" size="icon" className="text-gray-300" onClick={() => { /* Prev item logic */ }}><ChevronLeft className="h-6 w-6" /></Button>
               <Button
-                variant="ghost"
-                className="flex items-center gap-2 px-4 py-2 bg-stone-800 hover:bg-stone-700 rounded text-gray-300 font-bold min-w-[150px] justify-center"
+                variant={isPlaying ? "destructive" : "ghost"}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded font-bold min-w-[150px] justify-center transition-all",
+                  isPlaying ? "bg-red-900/40 hover:bg-red-800/60 text-white border border-red-500" : "bg-stone-800 hover:bg-stone-700 text-gray-300"
+                )}
                 onClick={playCurrent}
               >
-                <Volume2 className="h-5 w-5 mr-2" /> {t('play')}
+                {isPlaying ? <Pause className="h-5 w-5 mr-2" /> : <Volume2 className="h-5 w-5 mr-2" />}
+                {isPlaying ? (t('stop') || 'Pause') : t('play')}
               </Button>
               <Button variant="ghost" size="icon" className="text-gray-300" onClick={() => { /* Next item logic */ }}><ChevronRight className="h-6 w-6" /></Button>
             </div>

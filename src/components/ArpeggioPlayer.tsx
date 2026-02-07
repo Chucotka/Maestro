@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
-import { Play, Square, FastForward, Rewind } from 'lucide-react';
+import { Play, Pause, Square, FastForward, Rewind } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { useI18n } from '@/lib/i18n';
 import { ALL_NOTES } from '@/lib/fretboardUtils';
@@ -30,14 +30,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
     // We don't stop the whole Transport here to avoid killing the metronome
   }, []);
 
-  const startArpeggio = useCallback(async () => {
-    if (!sampler) {
-      console.warn("Sampler not ready for arpeggiator");
-      return;
-    }
-    if (notes.length === 0) return;
-
-    await Tone.start();
+  const createSequence = useCallback(() => {
+    if (!sampler || notes.length === 0) return null;
 
     // Create actual notes with octaves for playback, ensuring they go up
     let currentOctave = instrumentType === 'bass' ? 1 : instrumentType === 'ukulele' ? 4 : 3;
@@ -45,8 +39,6 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
 
     const playNotes = notes.map((n) => {
       const noteIndex = ALL_NOTES.indexOf(n);
-      // For Ukulele (re-entrant tuning), if it's the first string G4, we might not want standard ascending
-      // But for Arpeggio Player, logical ascending is usually preferred.
       if (noteIndex !== -1 && noteIndex < lastNoteIndex) {
         currentOctave++;
       }
@@ -58,27 +50,51 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
     if (direction === 'down') notesToPlay.reverse();
     if (direction === 'updown') notesToPlay = [...playNotes, ...[...playNotes].reverse().slice(1, -1)];
 
-    Tone.Transport.bpm.value = tempo;
-
-    sequenceRef.current = new Tone.Sequence((time, note) => {
+    return new Tone.Sequence((time, note) => {
       sampler.triggerAttackRelease(note, "8n", time);
     }, notesToPlay, "8n");
+  }, [sampler, notes, direction, instrumentType]);
 
-    sequenceRef.current.start(0);
+  const startArpeggio = useCallback(async () => {
+    if (!sampler) return;
 
-    if (Tone.Transport.state !== 'started') {
-      Tone.Transport.start();
+    await Tone.start();
+
+    if (sequenceRef.current) {
+      sequenceRef.current.dispose();
     }
-    setIsPlaying(true);
-  }, [sampler, notes, direction, tempo, instrumentType]);
+
+    const seq = createSequence();
+    if (seq) {
+      sequenceRef.current = seq;
+      sequenceRef.current.start(0);
+
+      Tone.Transport.bpm.value = tempo;
+      if (Tone.Transport.state !== 'started') {
+        Tone.Transport.start();
+      }
+      setIsPlaying(true);
+    }
+  }, [sampler, tempo, createSequence]);
 
   // Handle prop changes while playing
   useEffect(() => {
-    if (isPlaying) {
-      stopArpeggio();
-      startArpeggio();
+    if (isPlaying && sequenceRef.current) {
+      const wasStarted = sequenceRef.current.state === 'started';
+      sequenceRef.current.stop();
+      sequenceRef.current.dispose();
+
+      const seq = createSequence();
+      if (seq) {
+        sequenceRef.current = seq;
+        if (wasStarted) sequenceRef.current.start(0);
+      }
     }
-  }, [notes, direction, tempo, sampler, instrumentType, isPlaying, stopArpeggio, startArpeggio]);
+  }, [notes, direction, sampler, instrumentType, createSequence]); // isPlaying excluded to avoid loop
+
+  useEffect(() => {
+    Tone.Transport.bpm.value = tempo;
+  }, [tempo]);
 
   useEffect(() => {
     return () => {
@@ -97,7 +113,7 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
           disabled={!sampler}
           className={cn("shrink-0", !isPlaying && "bg-[#b06a3b] hover:bg-[#8e5630]")}
         >
-          {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
         {!sampler && <span className="text-[10px] text-stone-500 animate-pulse">{t('loading')}</span>}
 
