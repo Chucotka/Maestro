@@ -222,7 +222,7 @@ const Index = () => {
         case 'clean': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/"; break;
         case 'distortion': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/distortion_guitar-mp3/"; break;
         case 'bass': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_bass_finger-mp3/"; break;
-        case 'ukulele': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/ukulele-mp3/"; break;
+        case 'ukulele': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/"; break;
       }
 
       await new Promise<void>((resolve, reject) => {
