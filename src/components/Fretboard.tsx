@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getNoteAtFret, getScaleNotes, getChordNotes, getCAGEDNotes, getIntervalName, ALL_NOTES, GUITAR_TUNINGS, SCALES, CHORDS, CAGED_SHAPES } from '@/lib/fretboardUtils';
+import { getNoteAtFret, getScaleNotes, getChordNotes, getCAGEDNotes, getVoicingNotes, getIntervalName, ALL_NOTES, GUITAR_TUNINGS, SCALES, CHORDS, CAGED_SHAPES, CHORD_VOICINGS } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +29,7 @@ interface FretboardProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
   selectedChordName?: keyof typeof CHORDS;
+  currentVoicingIndex?: number;
   selectedCagedShape?: keyof typeof CAGED_SHAPES;
   selectedTuningName: string;
   onTuningChange: (tuning: string) => void;
@@ -44,6 +45,7 @@ const Fretboard: React.FC<FretboardProps> = ({
   selectedRoot,
   selectedScaleName,
   selectedChordName,
+  currentVoicingIndex = 0,
   selectedCagedShape,
   selectedTuningName,
   onTuningChange,
@@ -92,6 +94,14 @@ const Fretboard: React.FC<FretboardProps> = ({
     return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
   }, [selectedRoot, selectedScaleName, selectedChordName, mode]);
 
+  const voicingNotes = useMemo(() => {
+    if (mode !== 'chord' || !selectedChordName) return [];
+    const chordMap = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
+    const voicingNames = Object.keys(chordMap);
+    const voicingName = voicingNames[currentVoicingIndex % voicingNames.length];
+    return getVoicingNotes(selectedRoot, selectedChordName, voicingName, currentTuning);
+  }, [mode, selectedRoot, selectedChordName, currentVoicingIndex, currentTuning]);
+
   const cagedFretNotes = useMemo(() => {
     if (mode !== 'caged' || !selectedCagedShape) return [];
     return getCAGEDNotes(selectedRoot, selectedCagedShape, currentTuning);
@@ -138,6 +148,12 @@ const Fretboard: React.FC<FretboardProps> = ({
           if (cagedNote) {
             isScaleNote = true;
             sequenceNumber = cagedNote.interval;
+          }
+        } else if (mode === 'chord' && !showAllNotes) {
+          const vNote = voicingNotes.find(vn => vn.string === stringNum && vn.fret === fret);
+          if (vNote) {
+            isScaleNote = true;
+            sequenceNumber = vNote.interval;
           }
         } else {
           isScaleNote = activeNotesList.includes(noteName);
@@ -189,6 +205,15 @@ const Fretboard: React.FC<FretboardProps> = ({
   return (
     <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300">
       <div className="flex flex-wrap items-center gap-4 mb-2 px-2">
+        {mode === 'chord' && (
+          <div className="text-xs font-bold text-[#b06a3b] bg-[#b06a3b]/10 px-2 py-1 rounded">
+            {(() => {
+              const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
+              const names = Object.keys(chordMap);
+              return names[currentVoicingIndex % names.length];
+            })()}
+          </div>
+        )}
         <div className="flex items-center space-x-2">
           <Switch id="show-notes" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
           <Label htmlFor="show-notes" className="text-xs text-gray-300 uppercase font-bold">{t('notes')}</Label>

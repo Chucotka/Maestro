@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, CHORD_VOICINGS, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -70,7 +70,8 @@ const Index = () => {
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const [selectedChordName, setSelectedChordName] = useState<keyof typeof CHORDS>("Major");
-  const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("E");
+  const [currentVoicingIndex, setCurrentVoicingIndex] = useState(0);
+  const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("Shape E");
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual'>('scale');
   const [volume, setVolume] = useState(0.8);
@@ -104,8 +105,8 @@ const Index = () => {
     setIsPlaying(false);
   }, []);
 
-  const playCurrent = useCallback((forceStart: boolean | React.MouseEvent = false) => {
-    const isForced = forceStart === true;
+  const playCurrent = useCallback((forceStart: boolean | number | React.MouseEvent = false) => {
+    const isForced = forceStart === true || typeof forceStart === 'number';
     if (!isForced && isPlayingRef.current) {
       stopCurrent();
       return;
@@ -123,8 +124,19 @@ const Index = () => {
     let isChord = false;
 
     if (viewMode === 'chord') {
-      notes = getChordNotes(selectedRoot, CHORDS[selectedChordName]);
-      isChord = true;
+      const chordMap = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
+      const voicingNames = Object.keys(chordMap);
+      const vIdx = typeof forceStart === 'number' ? forceStart : currentVoicingIndex;
+      const voicingName = voicingNames[vIdx % voicingNames.length];
+      const vNotes = getVoicingNotes(selectedRoot, selectedChordName, voicingName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS]);
+
+      const sampler = samplers.current[selectedInstrument];
+      if (sampler) {
+        sampler.triggerAttackRelease(vNotes.map(vn => vn.noteWithOctave), "2n");
+        setIsPlaying(true);
+        setTimeout(() => setIsPlaying(false), 2000);
+      }
+      return;
     } else if (viewMode === 'scale') {
       notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
     } else if (viewMode === 'caged' && selectedCagedShape) {
@@ -187,13 +199,15 @@ const Index = () => {
         stopTimeoutRef.current = null;
       }, `+${duration + 0.5}`);
     }
-  }, [selectedInstrument, selectedRoot, selectedChordName, selectedScaleName, viewMode, selectedCagedShape, stopCurrent]);
+  }, [selectedInstrument, selectedRoot, selectedChordName, currentVoicingIndex, selectedScaleName, viewMode, selectedCagedShape, stopCurrent]);
 
   // Auto-play when root or type changed
   useEffect(() => {
     if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled) {
       playCurrent(true); // forceStart to avoid toggle during auto-play
     }
+    // Reset voicing when chord changes
+    setCurrentVoicingIndex(0);
   }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled, playCurrent]);
 
   useEffect(() => {
@@ -536,6 +550,7 @@ const Index = () => {
                   selectedRoot={selectedRoot}
                   selectedScaleName={selectedScaleName}
                   selectedChordName={selectedChordName}
+                  currentVoicingIndex={currentVoicingIndex}
                   selectedCagedShape={selectedCagedShape}
                   selectedTuningName={selectedTuningName}
                   onTuningChange={setSelectedTuningName}
@@ -591,7 +606,20 @@ const Index = () => {
             </div>
 
             <div className="flex items-center gap-2 bg-[#2a2a2a] p-1 rounded-md border border-stone-700 scale-90 md:scale-100 landscape:scale-90">
-              <Button variant="ghost" size="icon" className="text-gray-300" onClick={() => { /* Prev item logic */ }}><ChevronLeft className="h-6 w-6" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-300"
+                onClick={() => {
+                  const voicings = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
+                  const count = Object.keys(voicings).length;
+                  const nextIndex = (currentVoicingIndex - 1 + count) % count;
+                  setCurrentVoicingIndex(nextIndex);
+                  if (viewMode === 'chord') playCurrent(nextIndex);
+                }}
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
               <Button
                 variant={isPlaying ? "destructive" : "ghost"}
                 className={cn(
@@ -603,7 +631,20 @@ const Index = () => {
                 {isPlaying ? <Pause className="h-5 w-5 mr-2" /> : <Volume2 className="h-5 w-5 mr-2" />}
                 {isPlaying ? (t('stop') || 'Pause') : t('play')}
               </Button>
-              <Button variant="ghost" size="icon" className="text-gray-300" onClick={() => { /* Next item logic */ }}><ChevronRight className="h-6 w-6" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-300"
+                onClick={() => {
+                  const voicings = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
+                  const count = Object.keys(voicings).length;
+                  const nextIndex = (currentVoicingIndex + 1) % count;
+                  setCurrentVoicingIndex(nextIndex);
+                  if (viewMode === 'chord') playCurrent(nextIndex);
+                }}
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
             </div>
           </div>
 
