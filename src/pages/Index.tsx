@@ -4,7 +4,7 @@ import CircleOfFifths from "@/components/CircleOfFifths";
 import ProgressionGenerator from "@/components/ProgressionGenerator";
 import ArpeggioPlayer from "@/components/ArpeggioPlayer";
 import Metronome from "@/components/Metronome";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
 import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Square, Pause, Loader2, ChevronLeft, ChevronRight, Settings, Mic, MicOff } from "lucide-react";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, CHORD_VOICINGS, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, CHORD_VOICINGS, getVoicingNotes, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -206,8 +206,6 @@ const Index = () => {
     if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled) {
       playCurrent(true); // forceStart to avoid toggle during auto-play
     }
-    // Reset voicing when chord changes
-    setCurrentVoicingIndex(0);
   }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled, playCurrent]);
 
   useEffect(() => {
@@ -293,13 +291,23 @@ const Index = () => {
 
   const isSelectedLoading = loadingInstruments.has(selectedInstrument);
 
-  const activeNotesForArpeggio = viewMode === 'scale'
-    ? getScaleNotes(selectedRoot, SCALES[selectedScaleName])
-    : viewMode === 'chord'
-    ? getChordNotes(selectedRoot, CHORDS[selectedChordName])
-    : viewMode === 'caged'
-    ? getChordNotes(selectedRoot, CHORDS['Major'])
-    : getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+  const activeNotesForArpeggio = useMemo(() => {
+    if (viewMode === 'chord') {
+      const chordMap = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
+      const voicingNames = Object.keys(chordMap);
+      const vName = voicingNames[currentVoicingIndex % voicingNames.length];
+      const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard);
+      // Return note names in order of strings (usually low to high)
+      return vNotes.map(vn => vn.noteName);
+    }
+    if (viewMode === 'scale') {
+      return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+    }
+    if (viewMode === 'caged') {
+      return getChordNotes(selectedRoot, CHORDS['Major']);
+    }
+    return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+  }, [viewMode, selectedRoot, selectedChordName, selectedScaleName, currentVoicingIndex, selectedTuningName]);
 
   if (!isAudioEnabled) {
     return (
@@ -329,7 +337,20 @@ const Index = () => {
         <div className="flex items-center justify-center gap-1 md:gap-4 min-w-max landscape:gap-2">
           {[
             { id: 'chords', label: t('chords'), action: () => setViewMode('chord') },
-            { id: 'triads', label: t('triads'), action: () => { setViewMode('chord'); setSelectedChordName('Major'); toast.info("Triad mode active"); } },
+            { id: 'triads', label: t('triads'), action: () => {
+              setViewMode('chord');
+              // If current chord is already Major or Minor, keep it, otherwise switch to Major
+              if (selectedChordName !== 'Major' && selectedChordName !== 'Minor') {
+                setSelectedChordName('Major');
+              }
+              const chordName = (selectedChordName === 'Major' || selectedChordName === 'Minor') ? selectedChordName : 'Major';
+              const voicings = CHORD_VOICINGS[chordName];
+              const triadIdx = Object.keys(voicings).findIndex(k => k.toLowerCase().includes('triad'));
+              if (triadIdx !== -1) {
+                setCurrentVoicingIndex(triadIdx);
+              }
+              toast.info(`${chordName} Triads active`);
+            } },
             { id: 'quiz', label: t('quiz'), action: () => setViewMode('quiz') },
             { id: 'finder', label: t('finder'), action: () => setViewMode('finder') },
             { id: 'scales', label: t('scales'), action: () => setViewMode('scale') },
@@ -365,10 +386,14 @@ const Index = () => {
             ) : (
               <Button
                 key={item.id}
+                data-testid={`mode-btn-${item.id}`}
                 variant="ghost"
                 className={cn(
                   "text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4 text-xs md:text-sm",
-                  (viewMode === 'chord' && item.id === 'chords') || (viewMode === 'scale' && item.id === 'scales') ? "bg-stone-800 text-white" : "",
+                  (viewMode === 'chord' && item.id === 'chords' && !Object.keys(CHORD_VOICINGS[selectedChordName!] || {})[currentVoicingIndex]?.toLowerCase().includes('triad')) ||
+                  (viewMode === 'chord' && item.id === 'triads' && Object.keys(CHORD_VOICINGS[selectedChordName!] || {})[currentVoicingIndex]?.toLowerCase().includes('triad')) ||
+                  (viewMode === 'scale' && item.id === 'scales') ||
+                  (viewMode === item.id) ? "bg-stone-800 text-white" : "",
                   (item as { hidden?: boolean }).hidden ? "hidden" : ""
                 )}
                 onClick={item.action}
@@ -659,13 +684,13 @@ const Index = () => {
               <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[300px] overflow-y-auto">
                 {viewMode === 'chord'
                   ? Object.keys(CHORDS).map(c => (
-                      <DropdownMenuItem key={c} onClick={() => setSelectedChordName(c as keyof typeof CHORDS)} className="hover:bg-stone-800 focus:bg-stone-800">
+                      <DropdownMenuItem key={c} onClick={() => { setSelectedChordName(c as keyof typeof CHORDS); setCurrentVoicingIndex(0); }} className="hover:bg-stone-800 focus:bg-stone-800">
                         {c}
                       </DropdownMenuItem>
                     ))
                   : viewMode === 'scale'
                   ? Object.keys(SCALES).map(s => (
-                      <DropdownMenuItem key={s} onClick={() => setSelectedScaleName(s as keyof typeof SCALES)} className="hover:bg-stone-800 focus:bg-stone-800">
+                      <DropdownMenuItem key={s} onClick={() => { setSelectedScaleName(s as keyof typeof SCALES); setCurrentVoicingIndex(0); }} className="hover:bg-stone-800 focus:bg-stone-800">
                         {t_safe(s)}
                       </DropdownMenuItem>
                     ))

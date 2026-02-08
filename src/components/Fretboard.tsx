@@ -191,7 +191,7 @@ const Fretboard: React.FC<FretboardProps> = ({
       }
     });
     return notes;
-  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, selectedChordName, selectedScaleName, numFrets, detectedNote]);
+  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, voicingNotes, selectedChordName, selectedScaleName, numFrets, detectedNote]);
 
   const handleNoteClick = (noteName: string, noteWithOctave: string) => {
     if (sampler && Tone.context.state === 'running') {

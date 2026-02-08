@@ -3,6 +3,7 @@ import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Square, FastForward, Rewind } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
+import { toast } from "sonner";
 import { useI18n } from '@/lib/i18n';
 import { ALL_NOTES } from '@/lib/fretboardUtils';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
 
   const createSequence = useCallback(() => {
     if (!sampler || notes.length === 0) return null;
+    if (!sampler.loaded) return null;
 
     // Create actual notes with octaves for playback, ensuring they go up
     let currentOctave = instrumentType === 'bass' ? 1 : instrumentType === 'ukulele' ? 4 : 3;
@@ -58,7 +60,10 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
   const startArpeggio = useCallback(async () => {
     if (!sampler) return;
 
-    await Tone.start();
+    // Resume audio context
+    if (Tone.getContext().state !== 'running') {
+      await Tone.start();
+    }
 
     if (sequenceRef.current) {
       sequenceRef.current.dispose();
@@ -74,6 +79,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
         Tone.Transport.start();
       }
       setIsPlaying(true);
+    } else {
+      toast.error("Could not start arpeggio. Check if audio is loaded.");
     }
   }, [sampler, tempo, createSequence]);
 

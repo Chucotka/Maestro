@@ -217,14 +217,6 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 3, interval: '1' },
       { string: 1, relativeFret: 2, interval: '3' },
     ],
-    "Shape G": [
-      { string: 6, relativeFret: 3, interval: '1' },
-      { string: 5, relativeFret: 2, interval: '3' },
-      { string: 4, relativeFret: 0, interval: '5' },
-      { string: 3, relativeFret: 0, interval: '1' },
-      { string: 2, relativeFret: 0, interval: '3' },
-      { string: 1, relativeFret: 3, interval: '1' },
-    ],
     "Shape C": [
       { string: 5, relativeFret: 3, interval: '1' },
       { string: 4, relativeFret: 2, interval: '3' },
@@ -232,10 +224,28 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 1, interval: '1' },
       { string: 1, relativeFret: 0, interval: '3' },
     ],
-    "Triad (Strings 1-3)": [
+    "Triad (G-B-E)": [
+      { string: 3, relativeFret: 0, interval: '5' },
+      { string: 2, relativeFret: 1, interval: '1' },
+      { string: 1, relativeFret: 0, interval: '3' },
+    ],
+    "Triad (D-G-B)": [
+      { string: 4, relativeFret: 0, interval: '1' },
       { string: 3, relativeFret: 1, interval: '3' },
       { string: 2, relativeFret: 0, interval: '5' },
-      { string: 1, relativeFret: 0, interval: '1' },
+    ],
+    "Triad (A-D-G)": [
+      { string: 5, relativeFret: 0, interval: '1' },
+      { string: 4, relativeFret: -1, interval: '3' },
+      { string: 3, relativeFret: -3, interval: '5' },
+    ],
+    "Shape G": [
+      { string: 6, relativeFret: 3, interval: '1' },
+      { string: 5, relativeFret: 2, interval: '3' },
+      { string: 4, relativeFret: 0, interval: '5' },
+      { string: 3, relativeFret: 0, interval: '1' },
+      { string: 2, relativeFret: 0, interval: '3' },
+      { string: 1, relativeFret: 3, interval: '1' },
     ],
   },
   "Minor": {
@@ -260,10 +270,20 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 3, interval: '1' },
       { string: 1, relativeFret: 1, interval: 'b3' },
     ],
-    "Triad (Strings 1-3)": [
+    "Triad (G-B-E)": [
+      { string: 3, relativeFret: 0, interval: '5' },
+      { string: 2, relativeFret: 1, interval: '1' },
+      { string: 1, relativeFret: -1, interval: 'b3' },
+    ],
+    "Triad (D-G-B)": [
+      { string: 4, relativeFret: 0, interval: '1' },
       { string: 3, relativeFret: 0, interval: 'b3' },
-      { string: 2, relativeFret: 0, interval: '5' },
-      { string: 1, relativeFret: 0, interval: '1' },
+      { string: 2, relativeFret: -1, interval: '5' },
+    ],
+    "Triad (A-D-G)": [
+      { string: 5, relativeFret: 0, interval: '1' },
+      { string: 4, relativeFret: -2, interval: 'b3' },
+      { string: 3, relativeFret: -3, interval: '5' },
     ],
   },
   "Dominant 7th": {
@@ -288,6 +308,11 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 1, interval: '1' },
       { string: 1, relativeFret: 2, interval: '3' },
     ],
+    "Triad (Strings 1-3)": [
+      { string: 3, relativeFret: 1, interval: '3' },
+      { string: 2, relativeFret: 3, interval: 'b7' },
+      { string: 1, relativeFret: 0, interval: '1' },
+    ],
   },
   "Major 7th": {
     "Shape Emaj7": [
@@ -302,6 +327,11 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 3, relativeFret: 1, interval: '7' },
       { string: 2, relativeFret: 2, interval: '3' },
       { string: 1, relativeFret: 0, interval: '5' },
+    ],
+    "Triad (Strings 1-3)": [
+      { string: 3, relativeFret: 1, interval: '3' },
+      { string: 2, relativeFret: 0, interval: '5' },
+      { string: 1, relativeFret: 4, interval: '7' },
     ],
   },
   "Minor 7th": {
@@ -320,6 +350,37 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 1, interval: 'b3' },
       { string: 1, relativeFret: 0, interval: '5' },
     ],
+    "Triad (Strings 1-3)": [
+      { string: 3, relativeFret: 0, interval: 'b3' },
+      { string: 2, relativeFret: 0, interval: '5' },
+      { string: 1, relativeFret: 3, interval: 'b7' },
+    ],
+  },
+  "5 (Power)": {
+    "Standard": [
+      { string: 6, relativeFret: 0, interval: '1' },
+      { string: 5, relativeFret: 2, interval: '5' },
+      { string: 4, relativeFret: 2, interval: '1' },
+    ],
+    "A-string based": [
+      { string: 5, relativeFret: 0, interval: '1' },
+      { string: 4, relativeFret: 2, interval: '5' },
+      { string: 3, relativeFret: 2, interval: '1' },
+    ]
+  },
+  "Diminished": {
+    "Triad (Strings 1-3)": [
+      { string: 3, relativeFret: 0, interval: 'b3' },
+      { string: 2, relativeFret: 0, interval: 'b5' },
+      { string: 1, relativeFret: 2, interval: '1' },
+    ],
+  },
+  "Augmented": {
+    "Triad (Strings 1-3)": [
+      { string: 3, relativeFret: 1, interval: '3' },
+      { string: 2, relativeFret: 1, interval: '#5' },
+      { string: 1, relativeFret: 0, interval: '1' },
+    ],
   }
 };
 
@@ -337,9 +398,12 @@ export const getVoicingNotes = (
 
   if (!shape) return [];
 
-  const rootString = shape.find(n => n.interval === '1' || n.interval === 'R')?.string || 6;
   const tuningStrings = [...tuning].reverse(); // from [E2...E4] to [E4...E2]
-  const openStringNote = tuningStrings[rootString - 1];
+  const rootString = shape.find(n => n.interval === '1' || n.interval === 'R')?.string || 6;
+
+  // Robustness for instruments with fewer strings (e.g. Ukulele)
+  const effectiveRootString = Math.min(rootString, tuningStrings.length);
+  const openStringNote = tuningStrings[effectiveRootString - 1] || tuningStrings[tuningStrings.length - 1];
 
   const openNoteName = openStringNote.match(/[A-G]#?/)?.[0] || '';
   const openNoteIndex = ALL_NOTES.indexOf(openNoteName);
@@ -353,21 +417,25 @@ export const getVoicingNotes = (
   // We want to keep it in a reasonable range, e.g. 0-12
   while (baseFret < 0) baseFret += 12;
 
-  return shape.map(n => {
-    const sIdx = tuningStrings.length - n.string;
-    const sOpenNote = tuning[sIdx]; // with octave, e.g. "E2"
-    const absFret = baseFret + n.relativeFret;
-    const noteWithOctave = getNoteAtFret(sOpenNote, absFret);
-    const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
+  return shape
+    .filter(n => n.string <= tuningStrings.length)
+    .map(n => {
+      const sIdx = tuningStrings.length - n.string;
+      const sOpenNote = tuning[sIdx]; // with octave, e.g. "E2"
+      const absFret = baseFret + n.relativeFret;
+      // Ensure fret is not negative
+      const safeFret = Math.max(0, absFret);
+      const noteWithOctave = getNoteAtFret(sOpenNote, safeFret);
+      const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
 
-    return {
-      string: n.string,
-      fret: absFret,
-      noteName,
-      noteWithOctave,
-      interval: n.interval
-    };
-  });
+      return {
+        string: n.string,
+        fret: safeFret,
+        noteName,
+        noteWithOctave,
+        interval: n.interval
+      };
+    });
 };
 
 export const getCAGEDNotes = (root: string, shapeName: string, tuning: string[]) =>
