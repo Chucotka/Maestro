@@ -201,6 +201,11 @@ const Index = () => {
     }
   }, [selectedInstrument, selectedRoot, selectedChordName, currentVoicingIndex, selectedScaleName, viewMode, selectedCagedShape, stopCurrent]);
 
+  // Reset voicing index when chord name changes
+  useEffect(() => {
+    setCurrentVoicingIndex(0);
+  }, [selectedChordName]);
+
   // Auto-play when root or type changed
   useEffect(() => {
     if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled) {
@@ -293,12 +298,18 @@ const Index = () => {
 
   const activeNotesForArpeggio = useMemo(() => {
     if (viewMode === 'chord') {
-      const chordMap = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
-      const voicingNames = Object.keys(chordMap);
-      const vName = voicingNames[currentVoicingIndex % voicingNames.length];
-      const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard);
-      // Return note names in order of strings (usually low to high)
-      return vNotes.map(vn => vn.noteName);
+      const chordMap = CHORD_VOICINGS[selectedChordName];
+      if (chordMap) {
+        const voicingNames = Object.keys(chordMap);
+        const vName = voicingNames[currentVoicingIndex % voicingNames.length];
+        const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard);
+        if (vNotes.length > 0) {
+          // Return note names in order of strings (usually low to high)
+          return vNotes.map(vn => vn.noteName);
+        }
+      }
+      // Fallback to basic chord notes if no voicing found
+      return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
     }
     if (viewMode === 'scale') {
       return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
@@ -336,7 +347,10 @@ const Index = () => {
       <div className="w-full bg-[#1e1e1e] border-b border-stone-800 px-4 py-2 mb-4 overflow-x-auto landscape:mb-1 landscape:py-1">
         <div className="flex items-center justify-center gap-1 md:gap-4 min-w-max landscape:gap-2">
           {[
-            { id: 'chords', label: t('chords'), action: () => setViewMode('chord') },
+            { id: 'chords', label: t('chords'), action: () => {
+              setViewMode('chord');
+              setCurrentVoicingIndex(0);
+            } },
             { id: 'triads', label: t('triads'), action: () => {
               setViewMode('chord');
               // If current chord is already Major or Minor, keep it, otherwise switch to Major
@@ -347,7 +361,11 @@ const Index = () => {
               const voicings = CHORD_VOICINGS[chordName];
               const triadIdx = Object.keys(voicings).findIndex(k => k.toLowerCase().includes('triad'));
               if (triadIdx !== -1) {
-                setCurrentVoicingIndex(triadIdx);
+                // We use a small timeout to let the chord change effect settle if needed,
+                // though setCurrentVoicingIndex(0) in useEffect might conflict.
+                // Actually, the useEffect will trigger on selectedChordName change.
+                // If we want to force Triad, we should do it after or without triggering the reset.
+                setTimeout(() => setCurrentVoicingIndex(triadIdx), 10);
               }
               toast.info(`${chordName} Triads active`);
             } },

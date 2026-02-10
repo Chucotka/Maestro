@@ -287,20 +287,26 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
     ],
   },
   "Dominant 7th": {
-    "Shape E7": [
+    "Shape E7 (Barre)": [
       { string: 6, relativeFret: 0, interval: '1' },
       { string: 5, relativeFret: 2, interval: '5' },
       { string: 4, relativeFret: 0, interval: 'b7' },
       { string: 3, relativeFret: 1, interval: '3' },
-      { string: 2, relativeFret: 0, interval: '5' },
+      { string: 2, relativeFret: 3, interval: 'b7' },
       { string: 1, relativeFret: 0, interval: '1' },
     ],
-    "Shape A7": [
+    "Shape A7 (Barre)": [
       { string: 5, relativeFret: 0, interval: '1' },
       { string: 4, relativeFret: 2, interval: '5' },
       { string: 3, relativeFret: 0, interval: 'b7' },
       { string: 2, relativeFret: 2, interval: '3' },
       { string: 1, relativeFret: 0, interval: '5' },
+    ],
+    "Shape C7": [
+      { string: 5, relativeFret: 3, interval: '1' },
+      { string: 4, relativeFret: 2, interval: '3' },
+      { string: 3, relativeFret: 3, interval: 'b7' },
+      { string: 2, relativeFret: 1, interval: '1' },
     ],
     "Shape D7": [
       { string: 4, relativeFret: 0, interval: '1' },
@@ -308,53 +314,103 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 1, interval: '1' },
       { string: 1, relativeFret: 2, interval: '3' },
     ],
-    "Triad (Strings 1-3)": [
+    "Triad (G-B-E)": [
       { string: 3, relativeFret: 1, interval: '3' },
       { string: 2, relativeFret: 3, interval: 'b7' },
       { string: 1, relativeFret: 0, interval: '1' },
     ],
   },
   "Major 7th": {
-    "Shape Emaj7": [
+    "Shape Emaj7 (Barre)": [
       { string: 6, relativeFret: 0, interval: '1' },
+      { string: 5, relativeFret: 2, interval: '5' },
       { string: 4, relativeFret: 1, interval: '7' },
       { string: 3, relativeFret: 1, interval: '3' },
       { string: 2, relativeFret: 0, interval: '5' },
     ],
-    "Shape Amaj7": [
+    "Shape Amaj7 (Barre)": [
       { string: 5, relativeFret: 0, interval: '1' },
       { string: 4, relativeFret: 2, interval: '5' },
       { string: 3, relativeFret: 1, interval: '7' },
       { string: 2, relativeFret: 2, interval: '3' },
       { string: 1, relativeFret: 0, interval: '5' },
     ],
-    "Triad (Strings 1-3)": [
+    "Shape Cmaj7": [
+      { string: 5, relativeFret: 3, interval: '1' },
+      { string: 4, relativeFret: 2, interval: '3' },
+      { string: 3, relativeFret: 0, interval: '5' },
+      { string: 2, relativeFret: 0, interval: '7' },
+    ],
+    "Triad (G-B-E)": [
       { string: 3, relativeFret: 1, interval: '3' },
       { string: 2, relativeFret: 0, interval: '5' },
       { string: 1, relativeFret: 4, interval: '7' },
     ],
   },
   "Minor 7th": {
-    "Shape Em7": [
+    "Shape Em7 (Barre)": [
       { string: 6, relativeFret: 0, interval: '1' },
       { string: 5, relativeFret: 2, interval: '5' },
       { string: 4, relativeFret: 0, interval: 'b7' },
       { string: 3, relativeFret: 0, interval: 'b3' },
-      { string: 2, relativeFret: 0, interval: '5' },
+      { string: 2, relativeFret: 3, interval: 'b7' },
       { string: 1, relativeFret: 0, interval: '1' },
     ],
-    "Shape Am7": [
+    "Shape Am7 (Barre)": [
       { string: 5, relativeFret: 0, interval: '1' },
       { string: 4, relativeFret: 2, interval: '5' },
       { string: 3, relativeFret: 0, interval: 'b7' },
       { string: 2, relativeFret: 1, interval: 'b3' },
-      { string: 1, relativeFret: 0, interval: '5' },
+      { string: 1, relativeFret: 3, interval: 'b7' },
     ],
-    "Triad (Strings 1-3)": [
+    "Triad (G-B-E)": [
       { string: 3, relativeFret: 0, interval: 'b3' },
       { string: 2, relativeFret: 0, interval: '5' },
       { string: 1, relativeFret: 3, interval: 'b7' },
     ],
+  },
+  "Suspended 4": {
+    "Shape Esus4": [
+      { string: 6, relativeFret: 0, interval: '1' },
+      { string: 5, relativeFret: 2, interval: '5' },
+      { string: 4, relativeFret: 2, interval: '1' },
+      { string: 3, relativeFret: 2, interval: '4' },
+      { string: 2, relativeFret: 0, interval: '5' },
+      { string: 1, relativeFret: 0, interval: '1' },
+    ],
+    "Shape Asus4": [
+      { string: 5, relativeFret: 0, interval: '1' },
+      { string: 4, relativeFret: 2, interval: '5' },
+      { string: 3, relativeFret: 2, interval: '1' },
+      { string: 2, relativeFret: 3, interval: '4' },
+      { string: 1, relativeFret: 0, interval: '5' },
+    ],
+    "Triad (G-B-E)": [
+      { string: 3, relativeFret: 2, interval: '4' },
+      { string: 2, relativeFret: 3, interval: '1' },
+      { string: 1, relativeFret: 0, interval: '5' },
+    ]
+  },
+  "Suspended 2": {
+    "Shape Esus2": [
+      { string: 6, relativeFret: 0, interval: '1' },
+      { string: 5, relativeFret: 2, interval: '5' },
+      { string: 4, relativeFret: 4, interval: '2' },
+      { string: 3, relativeFret: 4, interval: '5' },
+      { string: 2, relativeFret: 0, interval: '1' },
+    ],
+    "Shape Asus2": [
+      { string: 5, relativeFret: 0, interval: '1' },
+      { string: 4, relativeFret: 2, interval: '5' },
+      { string: 3, relativeFret: 2, interval: '1' },
+      { string: 2, relativeFret: 0, interval: '2' },
+      { string: 1, relativeFret: 0, interval: '5' },
+    ],
+    "Triad (G-B-E)": [
+      { string: 3, relativeFret: 2, interval: '1' },
+      { string: 2, relativeFret: 0, interval: '2' },
+      { string: 1, relativeFret: 0, interval: '5' },
+    ]
   },
   "5 (Power)": {
     "Standard": [
@@ -376,11 +432,37 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
     ],
   },
   "Augmented": {
-    "Triad (Strings 1-3)": [
+    "Triad (G-B-E)": [
       { string: 3, relativeFret: 1, interval: '3' },
       { string: 2, relativeFret: 1, interval: '#5' },
       { string: 1, relativeFret: 0, interval: '1' },
     ],
+  },
+  "6th": {
+    "Shape E6": [
+      { string: 6, relativeFret: 0, interval: '1' },
+      { string: 5, relativeFret: 2, interval: '5' },
+      { string: 4, relativeFret: 2, interval: '1' },
+      { string: 3, relativeFret: 1, interval: '3' },
+      { string: 2, relativeFret: 2, interval: '6' },
+      { string: 1, relativeFret: 0, interval: '1' },
+    ],
+    "Shape A6": [
+      { string: 5, relativeFret: 0, interval: '1' },
+      { string: 4, relativeFret: 2, interval: '5' },
+      { string: 3, relativeFret: 2, interval: '1' },
+      { string: 2, relativeFret: 2, interval: '3' },
+      { string: 1, relativeFret: 2, interval: '6' },
+    ]
+  },
+  "Add 9": {
+    "Shape Cadd9": [
+      { string: 5, relativeFret: 3, interval: '1' },
+      { string: 4, relativeFret: 2, interval: '3' },
+      { string: 3, relativeFret: 0, interval: '5' },
+      { string: 2, relativeFret: 3, interval: '9' },
+      { string: 1, relativeFret: 0, interval: '3' },
+    ]
   }
 };
 

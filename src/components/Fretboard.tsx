@@ -96,7 +96,15 @@ const Fretboard: React.FC<FretboardProps> = ({
 
   const voicingNotes = useMemo(() => {
     if (mode !== 'chord' || !selectedChordName) return [];
-    const chordMap = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
+
+    // Check if we have voicings for this chord type
+    if (!CHORD_VOICINGS[selectedChordName]) {
+      // Fallback: If no specific voicings defined for this complex chord type,
+      // return empty so the main renderer falls back to showing all occurrences of chord notes.
+      return [];
+    }
+
+    const chordMap = CHORD_VOICINGS[selectedChordName];
     const voicingNames = Object.keys(chordMap);
     const voicingName = voicingNames[currentVoicingIndex % voicingNames.length];
     return getVoicingNotes(selectedRoot, selectedChordName, voicingName, currentTuning);
@@ -149,7 +157,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             isScaleNote = true;
             sequenceNumber = cagedNote.interval;
           }
-        } else if (mode === 'chord' && !showAllNotes) {
+        } else if (mode === 'chord' && !showAllNotes && voicingNotes.length > 0) {
           const vNote = voicingNotes.find(vn => vn.string === stringNum && vn.fret === fret);
           if (vNote) {
             isScaleNote = true;
@@ -191,7 +199,7 @@ const Fretboard: React.FC<FretboardProps> = ({
       }
     });
     return notes;
-  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, voicingNotes, selectedChordName, selectedScaleName, numFrets, detectedNote]);
+  }, [displayTuning, activeNotesList, selectedRoot, mode, cagedFretNotes, voicingNotes, selectedChordName, selectedScaleName, numFrets, detectedNote, showAllNotes, showNoteNames]);
 
   const handleNoteClick = (noteName: string, noteWithOctave: string) => {
     if (sampler && Tone.context.state === 'running') {
