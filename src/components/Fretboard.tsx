@@ -88,24 +88,24 @@ const Fretboard: React.FC<FretboardProps> = ({
     if (mode === 'caged') {
       return getChordNotes(selectedRoot, CHORDS['Major']);
     }
-    if (mode === 'chord' && selectedChordName) {
+    if ((mode === 'chord' || mode === 'triads') && selectedChordName) {
       return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
     }
     return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
   }, [selectedRoot, selectedScaleName, selectedChordName, mode]);
 
   const voicingNotes = useMemo(() => {
-    if (mode !== 'chord' || !selectedChordName) return [];
-
-    // Check if we have voicings for this chord type
-    if (!CHORD_VOICINGS[selectedChordName]) {
-      // Fallback: If no specific voicings defined for this complex chord type,
-      // return empty so the main renderer falls back to showing all occurrences of chord notes.
-      return [];
-    }
+    if ((mode !== 'chord' && mode !== 'triads') || !selectedChordName) return [];
 
     const chordMap = CHORD_VOICINGS[selectedChordName];
-    const voicingNames = Object.keys(chordMap);
+    if (!chordMap) return [];
+
+    const voicingNames = Object.keys(chordMap).filter(k =>
+      mode === 'triads' ? k.toLowerCase().includes('triad') : true
+    );
+
+    if (voicingNames.length === 0) return [];
+
     const voicingName = voicingNames[currentVoicingIndex % voicingNames.length];
     return getVoicingNotes(selectedRoot, selectedChordName, voicingName, currentTuning);
   }, [mode, selectedRoot, selectedChordName, currentVoicingIndex, currentTuning]);
@@ -157,7 +157,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             isScaleNote = true;
             sequenceNumber = cagedNote.interval;
           }
-        } else if (mode === 'chord' && !showAllNotes && voicingNotes.length > 0) {
+        } else if ((mode === 'chord' || mode === 'triads') && !showAllNotes && voicingNotes.length > 0) {
           const vNote = voicingNotes.find(vn => vn.string === stringNum && vn.fret === fret);
           if (vNote) {
             isScaleNote = true;
@@ -166,7 +166,7 @@ const Fretboard: React.FC<FretboardProps> = ({
         } else {
           isScaleNote = activeNotesList.includes(noteName);
           if (isScaleNote) {
-            const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
+            const intervals = (mode === 'chord' || mode === 'triads') && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
             const rootIndex = ALL_NOTES.indexOf(selectedRoot);
 
             // Try to find the original interval to preserve extensions like 9, 11, 13
@@ -213,12 +213,14 @@ const Fretboard: React.FC<FretboardProps> = ({
   return (
     <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300">
       <div className="flex flex-wrap items-center gap-4 mb-2 px-2">
-        {mode === 'chord' && (
+        {(mode === 'chord' || mode === 'triads') && (
           <div className="text-xs font-bold text-[#b06a3b] bg-[#b06a3b]/10 px-2 py-1 rounded">
             {(() => {
               const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
-              const names = Object.keys(chordMap);
-              return names[currentVoicingIndex % names.length];
+              const voicingNames = Object.keys(chordMap).filter(k =>
+                mode === 'triads' ? k.toLowerCase().includes('triad') : true
+              );
+              return voicingNames[currentVoicingIndex % voicingNames.length] || Object.keys(chordMap)[0];
             })()}
           </div>
         )}

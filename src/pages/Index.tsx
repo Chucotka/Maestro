@@ -66,6 +66,7 @@ const Index = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [loadingInstruments, setLoadingInstruments] = useState<Set<InstrumentType>>(new Set());
   const [loadedInstruments, setLoadedInstruments] = useState<Set<InstrumentType>>(new Set());
+  const [activeTab, setActiveTab] = useState("theory");
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>('guitar');
   const [selectedRoot, setSelectedRoot] = useState<string>("C");
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
@@ -297,28 +298,25 @@ const Index = () => {
   const isSelectedLoading = loadingInstruments.has(selectedInstrument);
 
   const activeNotesForArpeggio = useMemo(() => {
-    if (viewMode === 'chord') {
+    // If in chord/caged/triad mode, use specific voicing if possible
+    if (viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged') {
       const chordMap = CHORD_VOICINGS[selectedChordName];
       if (chordMap) {
-        const voicingNames = Object.keys(chordMap);
-        const vName = voicingNames[currentVoicingIndex % voicingNames.length];
+        const voicingNames = Object.keys(chordMap).filter(k =>
+          viewMode === 'triads' ? k.toLowerCase().includes('triad') :
+          viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
+        );
+        const vName = voicingNames[currentVoicingIndex % voicingNames.length] || Object.keys(chordMap)[0];
         const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard);
         if (vNotes.length > 0) {
-          // Return note names in order of strings (usually low to high)
           return vNotes.map(vn => vn.noteName);
         }
       }
-      // Fallback to basic chord notes if no voicing found
-      return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
+      return getChordNotes(selectedRoot, CHORDS[selectedChordName] || CHORDS.Major);
     }
-    if (viewMode === 'scale') {
-      return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
-    }
-    if (viewMode === 'caged') {
-      return getChordNotes(selectedRoot, CHORDS['Major']);
-    }
-    return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
-  }, [viewMode, selectedRoot, selectedChordName, selectedScaleName, currentVoicingIndex, selectedTuningName]);
+    // Default fallback: return chord notes for the current root
+    return getChordNotes(selectedRoot, CHORDS[selectedChordName] || CHORDS.Major);
+  }, [viewMode, selectedRoot, selectedChordName, currentVoicingIndex, selectedTuningName]);
 
   if (!isAudioEnabled) {
     return (
@@ -352,28 +350,19 @@ const Index = () => {
               setCurrentVoicingIndex(0);
             } },
             { id: 'triads', label: t('triads'), action: () => {
-              setViewMode('chord');
-              // If current chord is already Major or Minor, keep it, otherwise switch to Major
-              if (selectedChordName !== 'Major' && selectedChordName !== 'Minor') {
-                setSelectedChordName('Major');
-              }
-              const chordName = (selectedChordName === 'Major' || selectedChordName === 'Minor') ? selectedChordName : 'Major';
-              const voicings = CHORD_VOICINGS[chordName];
-              const triadIdx = Object.keys(voicings).findIndex(k => k.toLowerCase().includes('triad'));
-              if (triadIdx !== -1) {
-                // We use a small timeout to let the chord change effect settle if needed,
-                // though setCurrentVoicingIndex(0) in useEffect might conflict.
-                // Actually, the useEffect will trigger on selectedChordName change.
-                // If we want to force Triad, we should do it after or without triggering the reset.
-                setTimeout(() => setCurrentVoicingIndex(triadIdx), 10);
-              }
-              toast.info(`${chordName} Triads active`);
+              setViewMode('triads');
+              setCurrentVoicingIndex(0);
+              toast.info(`${selectedRoot} Triads active`);
             } },
             { id: 'quiz', label: t('quiz'), action: () => setViewMode('quiz') },
             { id: 'finder', label: t('finder'), action: () => setViewMode('finder') },
             { id: 'scales', label: t('scales'), action: () => setViewMode('scale') },
             { id: 'caged', label: t('caged'), action: () => setViewMode('caged'), hidden: selectedInstrument === 'ukulele' },
-            { id: 'arpeggios', label: t('arpeggios'), action: () => { arpeggioRef.current?.scrollIntoView({ behavior: 'smooth' }); toast.info("Arpeggiator"); } },
+            { id: 'arpeggios', label: t('arpeggios'), action: () => {
+              setActiveTab("practice");
+              setTimeout(() => arpeggioRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+              toast.info("Arpeggiator");
+            } },
             { id: 'notes', label: t('notes'), action: () => setViewMode('notes') },
             {
               id: 'tunings',
@@ -654,11 +643,15 @@ const Index = () => {
                 size="icon"
                 className="text-gray-300"
                 onClick={() => {
-                  const voicings = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
-                  const count = Object.keys(voicings).length;
+                  const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
+                  const voicingNames = Object.keys(chordMap).filter(k =>
+                    viewMode === 'triads' ? k.toLowerCase().includes('triad') :
+                    viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
+                  );
+                  const count = voicingNames.length || 1;
                   const nextIndex = (currentVoicingIndex - 1 + count) % count;
                   setCurrentVoicingIndex(nextIndex);
-                  if (viewMode === 'chord') playCurrent(nextIndex);
+                  if (viewMode === 'chord' || viewMode === 'triads') playCurrent(nextIndex);
                 }}
               >
                 <ChevronLeft className="h-6 w-6" />
@@ -679,11 +672,15 @@ const Index = () => {
                 size="icon"
                 className="text-gray-300"
                 onClick={() => {
-                  const voicings = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
-                  const count = Object.keys(voicings).length;
+                  const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
+                  const voicingNames = Object.keys(chordMap).filter(k =>
+                    viewMode === 'triads' ? k.toLowerCase().includes('triad') :
+                    viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
+                  );
+                  const count = voicingNames.length || 1;
                   const nextIndex = (currentVoicingIndex + 1) % count;
                   setCurrentVoicingIndex(nextIndex);
-                  if (viewMode === 'chord') playCurrent(nextIndex);
+                  if (viewMode === 'chord' || viewMode === 'triads') playCurrent(nextIndex);
                 }}
               >
                 <ChevronRight className="h-6 w-6" />
@@ -740,7 +737,7 @@ const Index = () => {
 
           {/* Secondary Tools */}
           <div className="mt-8 pb-24 landscape:mt-4">
-            <Tabs defaultValue="theory" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-[#1a1a1a] border border-stone-800 p-1 mb-6">
                 <TabsTrigger value="theory" className="data-[state=active]:bg-[#b06a3b] data-[state=active]:text-white text-gray-400">
                   {t('theoryTools') || 'Theory & Progressions'}

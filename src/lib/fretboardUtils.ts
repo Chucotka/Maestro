@@ -270,6 +270,21 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 3, interval: '1' },
       { string: 1, relativeFret: 1, interval: 'b3' },
     ],
+    "Shape Gm": [
+      { string: 6, relativeFret: 3, interval: '1' },
+      { string: 5, relativeFret: 1, interval: 'b3' },
+      { string: 4, relativeFret: 0, interval: '5' },
+      { string: 3, relativeFret: 0, interval: '1' },
+      { string: 2, relativeFret: 3, interval: '5' },
+      { string: 1, relativeFret: 3, interval: '1' },
+    ],
+    "Shape Cm": [
+      { string: 5, relativeFret: 3, interval: '1' },
+      { string: 4, relativeFret: 1, interval: 'b3' },
+      { string: 3, relativeFret: 0, interval: '5' },
+      { string: 2, relativeFret: 1, interval: '1' },
+      { string: 1, relativeFret: 3, interval: '5' },
+    ],
     "Triad (G-B-E)": [
       { string: 3, relativeFret: 0, interval: '5' },
       { string: 2, relativeFret: 1, interval: '1' },
@@ -314,6 +329,14 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 2, relativeFret: 1, interval: '1' },
       { string: 1, relativeFret: 2, interval: '3' },
     ],
+    "Shape G7": [
+      { string: 6, relativeFret: 3, interval: '1' },
+      { string: 5, relativeFret: 2, interval: '3' },
+      { string: 4, relativeFret: 3, interval: 'b7' },
+      { string: 3, relativeFret: 0, interval: '1' },
+      { string: 2, relativeFret: 0, interval: '3' },
+      { string: 1, relativeFret: 1, interval: 'b7' },
+    ],
     "Triad (G-B-E)": [
       { string: 3, relativeFret: 1, interval: '3' },
       { string: 2, relativeFret: 3, interval: 'b7' },
@@ -341,6 +364,18 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 3, relativeFret: 0, interval: '5' },
       { string: 2, relativeFret: 0, interval: '7' },
     ],
+    "Shape Dmaj7": [
+      { string: 4, relativeFret: 0, interval: '1' },
+      { string: 3, relativeFret: 2, interval: '5' },
+      { string: 2, relativeFret: 2, interval: '7' },
+      { string: 1, relativeFret: 2, interval: '3' },
+    ],
+    "Shape Gmaj7": [
+      { string: 6, relativeFret: 3, interval: '1' },
+      { string: 4, relativeFret: 4, interval: '7' },
+      { string: 3, relativeFret: 4, interval: '3' },
+      { string: 2, relativeFret: 3, interval: '5' },
+    ],
     "Triad (G-B-E)": [
       { string: 3, relativeFret: 1, interval: '3' },
       { string: 2, relativeFret: 0, interval: '5' },
@@ -362,6 +397,18 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 3, relativeFret: 0, interval: 'b7' },
       { string: 2, relativeFret: 1, interval: 'b3' },
       { string: 1, relativeFret: 3, interval: 'b7' },
+    ],
+    "Shape Dm7": [
+      { string: 4, relativeFret: 0, interval: '1' },
+      { string: 3, relativeFret: 2, interval: '5' },
+      { string: 2, relativeFret: 1, interval: 'b3' },
+      { string: 1, relativeFret: 1, interval: 'b7' },
+    ],
+    "Shape Gm7": [
+      { string: 6, relativeFret: 3, interval: '1' },
+      { string: 4, relativeFret: 3, interval: 'b7' },
+      { string: 3, relativeFret: 3, interval: 'b3' },
+      { string: 2, relativeFret: 3, interval: '5' },
     ],
     "Triad (G-B-E)": [
       { string: 3, relativeFret: 0, interval: 'b3' },
