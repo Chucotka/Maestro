@@ -300,6 +300,11 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 4, relativeFret: -2, interval: 'b3' },
       { string: 3, relativeFret: -3, interval: '5' },
     ],
+    "Triad (E-A-D)": [
+      { string: 6, relativeFret: 0, interval: '1' },
+      { string: 5, relativeFret: -3, interval: '5' },
+      { string: 4, relativeFret: -2, interval: 'b3' },
+    ],
   },
   "Dominant 7th": {
     "Shape E7 (Barre)": [
@@ -410,10 +415,22 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
       { string: 3, relativeFret: 3, interval: 'b3' },
       { string: 2, relativeFret: 3, interval: '5' },
     ],
+    "Shape Cm7": [
+      { string: 5, relativeFret: 3, interval: '1' },
+      { string: 4, relativeFret: 1, interval: 'b3' },
+      { string: 3, relativeFret: 3, interval: 'b7' },
+      { string: 2, relativeFret: 1, interval: '1' },
+      { string: 1, relativeFret: 3, interval: '5' },
+    ],
     "Triad (G-B-E)": [
       { string: 3, relativeFret: 0, interval: 'b3' },
       { string: 2, relativeFret: 0, interval: '5' },
       { string: 1, relativeFret: 3, interval: 'b7' },
+    ],
+    "Triad (D-G-B)": [
+      { string: 4, relativeFret: 0, interval: '1' },
+      { string: 3, relativeFret: 0, interval: 'b3' },
+      { string: 2, relativeFret: 3, interval: 'b7' },
     ],
   },
   "Suspended 4": {

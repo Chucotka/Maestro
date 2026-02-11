@@ -75,6 +75,7 @@ const Index = () => {
   const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("Shape E");
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual'>('scale');
+  const [activeArpeggioNote, setActiveArpeggioNote] = useState<{ string?: number, fret?: number, noteName?: string } | null>(null);
   const [volume, setVolume] = useState(0.8);
   const [searchQuery, setSearchQuery] = useState('');
   const [quizTarget, setQuizTarget] = useState<string | null>(null);
@@ -309,7 +310,12 @@ const Index = () => {
         const vName = voicingNames[currentVoicingIndex % voicingNames.length] || Object.keys(chordMap)[0];
         const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard);
         if (vNotes.length > 0) {
-          return vNotes.map(vn => vn.noteName);
+          return vNotes.map(vn => ({
+            noteName: vn.noteName,
+            string: vn.string,
+            fret: vn.fret,
+            noteWithOctave: vn.noteWithOctave
+          }));
         }
       }
       return getChordNotes(selectedRoot, CHORDS[selectedChordName] || CHORDS.Major);
@@ -354,10 +360,14 @@ const Index = () => {
               setCurrentVoicingIndex(0);
               toast.info(`${selectedRoot} Triads active`);
             } },
+            { id: 'caged', label: t('caged'), action: () => {
+              setViewMode('caged');
+              setCurrentVoicingIndex(0);
+              toast.info(`${selectedRoot} CAGED Shapes active`);
+            }, hidden: selectedInstrument === 'ukulele' },
             { id: 'quiz', label: t('quiz'), action: () => setViewMode('quiz') },
             { id: 'finder', label: t('finder'), action: () => setViewMode('finder') },
             { id: 'scales', label: t('scales'), action: () => setViewMode('scale') },
-            { id: 'caged', label: t('caged'), action: () => setViewMode('caged'), hidden: selectedInstrument === 'ukulele' },
             { id: 'arpeggios', label: t('arpeggios'), action: () => {
               setActiveTab("practice");
               setTimeout(() => arpeggioRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -591,6 +601,7 @@ const Index = () => {
                   instrumentType={selectedInstrument}
                   sampler={samplers.current[selectedInstrument] || null}
                   detectedNote={detectedNote}
+                  activeArpeggioNote={activeArpeggioNote}
                   onNoteClick={(noteName) => {
                     if (viewMode === 'quiz' && quizTarget) {
                       if (noteName === quizTarget) {
@@ -625,14 +636,17 @@ const Index = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 p-2 md:p-4 landscape:p-2 landscape:gap-2">
             <div className="flex flex-col text-center md:text-left">
               <h2 className="text-xl md:text-3xl font-bold text-[#b06a3b] landscape:text-xl">
-                {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` : `${selectedRoot} ${t_safe(selectedScaleName)}`}
+                {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` :
+                 viewMode === 'triads' ? `${selectedRoot} ${selectedChordName} (Triad)` :
+                 viewMode === 'caged' ? `${selectedRoot} ${selectedChordName} (CAGED)` :
+                 `${selectedRoot} ${t_safe(selectedScaleName)}`}
               </h2>
               <div className="flex flex-col gap-1">
                 <p className="text-xs md:text-base text-stone-500 font-mono landscape:text-xs">
-                  {activeNotesForArpeggio.join(' • ')}
+                  {activeNotesForArpeggio.map(n => typeof n === 'string' ? n : n.noteName).join(' • ')}
                 </p>
                 <p className="text-[10px] md:text-xs text-[#b06a3b] font-bold uppercase tracking-widest bg-[#b06a3b]/10 px-2 py-0.5 rounded self-center md:self-start">
-                  {viewMode === 'chord' ? getScaleFormula(CHORDS[selectedChordName]) : viewMode === 'scale' ? getScaleFormula(SCALES[selectedScaleName]) : 'CAGED Shape'}
+                  {viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged' ? getScaleFormula(CHORDS[selectedChordName]) : getScaleFormula(SCALES[selectedScaleName])}
                 </p>
               </div>
             </div>
@@ -771,6 +785,7 @@ const Index = () => {
                       notes={activeNotesForArpeggio}
                       sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}
                       instrumentType={selectedInstrument}
+                      onNotePlay={setActiveArpeggioNote}
                     />
                   </div>
                   <Metronome />

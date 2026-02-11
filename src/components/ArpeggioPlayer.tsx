@@ -8,13 +8,21 @@ import { useI18n } from '@/lib/i18n';
 import { ALL_NOTES } from '@/lib/fretboardUtils';
 import { cn } from '@/lib/utils';
 
-interface ArpeggioPlayerProps {
-  notes: string[]; // Note names like ["C", "E", "G"]
-  sampler: Tone.Sampler | null;
-  instrumentType?: string;
+interface ArpeggioNote {
+  noteName: string;
+  string?: number;
+  fret?: number;
+  noteWithOctave?: string;
 }
 
-const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrumentType }) => {
+interface ArpeggioPlayerProps {
+  notes: string[] | ArpeggioNote[]; // Note names or objects with positions
+  sampler: Tone.Sampler | null;
+  instrumentType?: string;
+  onNotePlay?: (note: ArpeggioNote | null) => void;
+}
+
+const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrumentType, onNotePlay }) => {
   const { t } = useI18n();
   const [isPlaying, setIsPlaying] = useState(false);
   const [tempo, setTempo] = useState(120);
@@ -22,6 +30,7 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
   const sequenceRef = useRef<Tone.Sequence | null>(null);
 
   const stopArpeggio = useCallback(() => {
+    if (onNotePlay) onNotePlay(null);
     setIsPlaying(false);
     if (sequenceRef.current) {
       sequenceRef.current.stop();
@@ -35,27 +44,42 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
     if (!sampler || notes.length === 0) return null;
     if (!sampler.loaded) return null;
 
+    // Normalize notes to objects
+    const noteObjects: ArpeggioNote[] = notes.map(n => typeof n === 'string' ? { noteName: n } : n);
+
     // Create actual notes with octaves for playback, ensuring they go up
     let currentOctave = instrumentType === 'bass' ? 1 : instrumentType === 'ukulele' ? 4 : 3;
     let lastNoteIndex = -1;
 
-    const playNotes = notes.map((n) => {
+    const sequenceData = noteObjects.map((obj) => {
+      const n = obj.noteName;
       const noteIndex = ALL_NOTES.indexOf(n);
-      if (noteIndex !== -1 && noteIndex < lastNoteIndex) {
-        currentOctave++;
+
+      let noteWithOctave = obj.noteWithOctave;
+      if (!noteWithOctave) {
+        if (noteIndex !== -1 && noteIndex < lastNoteIndex) {
+          currentOctave++;
+        }
+        lastNoteIndex = noteIndex;
+        noteWithOctave = `${n}${currentOctave}`;
       }
-      lastNoteIndex = noteIndex;
-      return `${n}${currentOctave}`;
+
+      return { ...obj, noteWithOctave };
     });
 
-    let notesToPlay = [...playNotes];
+    let notesToPlay = [...sequenceData];
     if (direction === 'down') notesToPlay.reverse();
-    if (direction === 'updown') notesToPlay = [...playNotes, ...[...playNotes].reverse().slice(1, -1)];
+    if (direction === 'updown') notesToPlay = [...sequenceData, ...[...sequenceData].reverse().slice(1, -1)];
 
-    return new Tone.Sequence((time, note) => {
-      sampler.triggerAttackRelease(note, "8n", time);
+    return new Tone.Sequence((time, obj) => {
+      sampler.triggerAttackRelease(obj.noteWithOctave!, "8n", time);
+      if (onNotePlay) {
+        Tone.Draw.schedule(() => {
+          onNotePlay(obj);
+        }, time);
+      }
     }, notesToPlay, "8n");
-  }, [sampler, notes, direction, instrumentType]);
+  }, [sampler, notes, direction, instrumentType, onNotePlay]);
 
   const startArpeggio = useCallback(async () => {
     if (!sampler) return;

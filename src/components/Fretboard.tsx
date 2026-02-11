@@ -39,6 +39,7 @@ interface FretboardProps {
   onModeChange?: (mode: string) => void;
   onNoteClick?: (noteName: string, noteWithOctave: string) => void;
   detectedNote?: DetectedNote | null;
+  activeArpeggioNote?: { string?: number, fret?: number, noteName?: string } | null;
 }
 
 const Fretboard: React.FC<FretboardProps> = ({
@@ -53,7 +54,8 @@ const Fretboard: React.FC<FretboardProps> = ({
   sampler,
   instrumentType,
   onModeChange,
-  detectedNote
+  detectedNote,
+  activeArpeggioNote
 }) => {
   const { t } = useI18n();
   const [showAllNotes, setShowAllNotes] = useState<boolean>(false);
@@ -100,9 +102,11 @@ const Fretboard: React.FC<FretboardProps> = ({
     const chordMap = CHORD_VOICINGS[selectedChordName];
     if (!chordMap) return [];
 
-    const voicingNames = Object.keys(chordMap).filter(k =>
-      mode === 'triads' ? k.toLowerCase().includes('triad') : true
-    );
+    const voicingNames = Object.keys(chordMap).filter(k => {
+      if (mode === 'triads') return k.toLowerCase().includes('triad');
+      if (mode === 'caged') return k.toLowerCase().includes('shape');
+      return true;
+    });
 
     if (voicingNames.length === 0) return [];
 
@@ -186,6 +190,16 @@ const Fretboard: React.FC<FretboardProps> = ({
         const isRoot = isScaleNote && noteName === selectedRoot;
         const isHeard = detectedNote ? detectedNote.name === noteName : false;
 
+        // Arpeggio highlight logic
+        let isArpeggioActive = false;
+        if (activeArpeggioNote) {
+          if (activeArpeggioNote.string !== undefined && activeArpeggioNote.fret !== undefined) {
+            isArpeggioActive = activeArpeggioNote.string === stringNum && activeArpeggioNote.fret === fret;
+          } else if (activeArpeggioNote.noteName) {
+            isArpeggioActive = activeArpeggioNote.noteName === noteName && isScaleNote;
+          }
+        }
+
         notes.push({
           stringIndex,
           fretNumber: fret,
@@ -195,6 +209,7 @@ const Fretboard: React.FC<FretboardProps> = ({
           sequenceNumber: sequenceNumber as number | string | null,
           isRoot,
           isHeard,
+      isArpeggioActive
         });
       }
     });
@@ -213,13 +228,15 @@ const Fretboard: React.FC<FretboardProps> = ({
   return (
     <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300">
       <div className="flex flex-wrap items-center gap-4 mb-2 px-2">
-        {(mode === 'chord' || mode === 'triads') && (
+        {(mode === 'chord' || mode === 'triads' || mode === 'caged') && (
           <div className="text-xs font-bold text-[#b06a3b] bg-[#b06a3b]/10 px-2 py-1 rounded">
             {(() => {
               const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
-              const voicingNames = Object.keys(chordMap).filter(k =>
-                mode === 'triads' ? k.toLowerCase().includes('triad') : true
-              );
+              const voicingNames = Object.keys(chordMap).filter(k => {
+                if (mode === 'triads') return k.toLowerCase().includes('triad');
+                if (mode === 'caged') return k.toLowerCase().includes('shape');
+                return true;
+              });
               return voicingNames[currentVoicingIndex % voicingNames.length] || Object.keys(chordMap)[0];
             })()}
           </div>
@@ -290,14 +307,20 @@ const Fretboard: React.FC<FretboardProps> = ({
                   className="relative flex items-center justify-center text-xs font-bold text-gray-400"
                   style={{ height: `${stringHeight}px` }}
                 >
-                  {(shouldRender || openNote?.isHeard) && (
-                    <div className={cn("z-30 transition-all duration-200", openNote?.isHeard && !shouldRender && "scale-110")}>
+              {(shouldRender || openNote?.isHeard || openNote?.isArpeggioActive) && (
+                <div className={cn(
+                  "z-30 transition-all duration-200",
+                  (openNote?.isHeard || openNote?.isArpeggioActive) && !shouldRender && "scale-110"
+                )}>
                       <NoteMarker
                         content={markerContent}
                         isRoot={openNote!.isRoot}
-                        isHighlighted={openNote!.isScaleNote || openNote!.isHeard}
+                    isHighlighted={openNote!.isScaleNote || openNote!.isHeard || openNote!.isArpeggioActive}
                         size={markerSize * 0.85}
-                        className={cn(openNote!.isHeard && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_15px_rgba(250,204,21,0.6)]")}
+                    className={cn(
+                      openNote!.isHeard && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_15px_rgba(250,204,21,0.6)]",
+                      openNote!.isArpeggioActive && "ring-4 ring-orange-500 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_20px_rgba(249,115,22,0.8)] scale-125 z-40"
+                    )}
                         onClick={() => handleNoteClick(openNote!.noteName, openNote!.noteWithOctave)}
                       />
                     </div>
@@ -370,7 +393,7 @@ const Fretboard: React.FC<FretboardProps> = ({
             {fretboardNotes
               .filter((note) => note.fretNumber > 0)
               .map((note, index) => {
-                const shouldRender = showAllNotes || note.isScaleNote || note.isHeard;
+                const shouldRender = showAllNotes || note.isScaleNote || note.isHeard || note.isArpeggioActive;
                 if (!shouldRender) return null;
 
                 const leftPos = note.fretNumber * fretWidth - fretWidth / 2;
@@ -382,16 +405,19 @@ const Fretboard: React.FC<FretboardProps> = ({
                     key={`note-fretted-${index}`}
                     className={cn(
                       "absolute -translate-x-1/2 -translate-y-1/2 z-10 transition-all duration-200",
-                      note.isHeard && !note.isScaleNote && "scale-110 z-20"
+                      (note.isHeard || note.isArpeggioActive) && !note.isScaleNote && "scale-110 z-20"
                     )}
                     style={{ left: `${leftPos}px`, top: `${topPos}px` }}
                   >
                     <NoteMarker
                       content={markerContent}
                       isRoot={note.isRoot}
-                      isHighlighted={note.isScaleNote || note.isHeard}
+                      isHighlighted={note.isScaleNote || note.isHeard || note.isArpeggioActive}
                       size={markerSize}
-                      className={cn(note.isHeard && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_15px_rgba(250,204,21,0.6)]")}
+                      className={cn(
+                        note.isHeard && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_15px_rgba(250,204,21,0.6)]",
+                        note.isArpeggioActive && "ring-4 ring-orange-500 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_20px_rgba(249,115,22,0.8)] scale-125 z-40"
+                      )}
                       onClick={() => handleNoteClick(note.noteName, note.noteWithOctave)}
                     />
                   </div>
