@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getNoteAtFret, getScaleNotes, getChordNotes, getCAGEDNotes, getVoicingNotes, getIntervalName, ALL_NOTES, GUITAR_TUNINGS, SCALES, CHORDS, CAGED_SHAPES, CHORD_VOICINGS } from '@/lib/fretboardUtils';
+import { getNoteAtFret, getScaleNotes, getChordNotes, getCAGEDNotes, getVoicingNotes, getSortedVoicingNames, getIntervalName, ALL_NOTES, GUITAR_TUNINGS, SCALES, CHORDS, CAGED_SHAPES, CHORD_VOICINGS } from '@/lib/fretboardUtils';
 import NoteMarker from './NoteMarker';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -102,11 +102,7 @@ const Fretboard: React.FC<FretboardProps> = ({
     const chordMap = CHORD_VOICINGS[selectedChordName];
     if (!chordMap) return [];
 
-    const voicingNames = Object.keys(chordMap).filter(k => {
-      if (mode === 'triads') return k.toLowerCase().includes('triad');
-      if (mode === 'caged') return k.toLowerCase().includes('shape');
-      return true;
-    });
+    const voicingNames = getSortedVoicingNames(selectedRoot, selectedChordName, currentTuning, mode);
 
     if (voicingNames.length === 0) return [];
 
@@ -231,13 +227,8 @@ const Fretboard: React.FC<FretboardProps> = ({
         {(mode === 'chord' || mode === 'triads' || mode === 'caged') && (
           <div className="text-xs font-bold text-[#b06a3b] bg-[#b06a3b]/10 px-2 py-1 rounded">
             {(() => {
-              const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
-              const voicingNames = Object.keys(chordMap).filter(k => {
-                if (mode === 'triads') return k.toLowerCase().includes('triad');
-                if (mode === 'caged') return k.toLowerCase().includes('shape');
-                return true;
-              });
-              return voicingNames[currentVoicingIndex % voicingNames.length] || Object.keys(chordMap)[0];
+              const voicingNames = getSortedVoicingNames(selectedRoot, selectedChordName!, currentTuning, mode);
+              return voicingNames[currentVoicingIndex % voicingNames.length] || "N/A";
             })()}
           </div>
         )}

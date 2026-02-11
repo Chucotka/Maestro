@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, CHORD_VOICINGS, getVoicingNotes, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, CHORD_VOICINGS, getVoicingNotes, getSortedVoicingNames, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -125,9 +125,13 @@ const Index = () => {
     let notes: string[] = [];
     let isChord = false;
 
-    if (viewMode === 'chord') {
-      const chordMap = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
-      const voicingNames = Object.keys(chordMap);
+    if (viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged') {
+      const voicingNames = getSortedVoicingNames(
+        selectedRoot,
+        selectedChordName,
+        GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard,
+        viewMode
+      );
       const vIdx = typeof forceStart === 'number' ? forceStart : currentVoicingIndex;
       const voicingName = voicingNames[vIdx % voicingNames.length];
       const vNotes = getVoicingNotes(selectedRoot, selectedChordName, voicingName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS]);
@@ -301,13 +305,14 @@ const Index = () => {
   const activeNotesForArpeggio = useMemo(() => {
     // If in chord/caged/triad mode, use specific voicing if possible
     if (viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged') {
-      const chordMap = CHORD_VOICINGS[selectedChordName];
-      if (chordMap) {
-        const voicingNames = Object.keys(chordMap).filter(k =>
-          viewMode === 'triads' ? k.toLowerCase().includes('triad') :
-          viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
-        );
-        const vName = voicingNames[currentVoicingIndex % voicingNames.length] || Object.keys(chordMap)[0];
+      const voicingNames = getSortedVoicingNames(
+        selectedRoot,
+        selectedChordName,
+        GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard,
+        viewMode
+      );
+      if (voicingNames.length > 0) {
+        const vName = voicingNames[currentVoicingIndex % voicingNames.length];
         const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard);
         if (vNotes.length > 0) {
           return vNotes.map(vn => ({
@@ -657,10 +662,11 @@ const Index = () => {
                 size="icon"
                 className="text-gray-300"
                 onClick={() => {
-                  const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
-                  const voicingNames = Object.keys(chordMap).filter(k =>
-                    viewMode === 'triads' ? k.toLowerCase().includes('triad') :
-                    viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
+                  const voicingNames = getSortedVoicingNames(
+                    selectedRoot,
+                    selectedChordName,
+                    GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard,
+                    viewMode
                   );
                   const count = voicingNames.length || 1;
                   const nextIndex = (currentVoicingIndex - 1 + count) % count;
@@ -686,10 +692,11 @@ const Index = () => {
                 size="icon"
                 className="text-gray-300"
                 onClick={() => {
-                  const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
-                  const voicingNames = Object.keys(chordMap).filter(k =>
-                    viewMode === 'triads' ? k.toLowerCase().includes('triad') :
-                    viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
+                  const voicingNames = getSortedVoicingNames(
+                    selectedRoot,
+                    selectedChordName,
+                    GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard,
+                    viewMode
                   );
                   const count = voicingNames.length || 1;
                   const nextIndex = (currentVoicingIndex + 1) % count;

@@ -33,29 +33,36 @@ export const GUITAR_TUNINGS = {
 };
 
 export const CHORDS = {
+  // --- Major Family ---
   "Major": [0, 4, 7],
-  "Minor": [0, 3, 7],
-  "5 (Power)": [0, 7],
-  "Dominant 7th": [0, 4, 7, 10],
   "Major 7th": [0, 4, 7, 11],
-  "Minor 7th": [0, 3, 7, 10],
-  "Minor Major 7th": [0, 3, 7, 11],
-  "Suspended 4": [0, 5, 7],
-  "Suspended 2": [0, 2, 7],
   "Add 9": [0, 4, 7, 14],
   "Major 9": [0, 4, 7, 11, 14],
-  "Minor 9": [0, 3, 7, 10, 14],
-  "Dominant 9": [0, 4, 7, 10, 14],
   "6th": [0, 4, 7, 9],
+
+  // --- Minor Family ---
+  "Minor": [0, 3, 7],
+  "Minor 7th": [0, 3, 7, 10],
+  "Minor 9": [0, 3, 7, 10, 14],
   "Minor 6th": [0, 3, 7, 9],
+  "Minor Major 7th": [0, 3, 7, 11],
+
+  // --- Dominant Family ---
+  "Dominant 7th": [0, 4, 7, 10],
+  "Dominant 9": [0, 4, 7, 10, 14],
+  "Suspended 4": [0, 5, 7],
+  "Suspended 2": [0, 2, 7],
+  "7sus4": [0, 5, 7, 10],
+  "11th": [0, 4, 7, 10, 14, 17],
+  "13th": [0, 4, 7, 10, 14, 17, 21],
+
+  // --- Other ---
+  "5 (Power)": [0, 7],
   "Diminished": [0, 3, 6],
   "Diminished 7th": [0, 3, 6, 9],
   "Half-Diminished 7": [0, 3, 6, 10],
   "Augmented": [0, 4, 8],
   "Augmented 7th": [0, 4, 8, 10],
-  "7sus4": [0, 5, 7, 10],
-  "11th": [0, 4, 7, 10, 14, 17],
-  "13th": [0, 4, 7, 10, 14, 17, 21],
 };
 
 export const SCALES = {
@@ -586,6 +593,66 @@ export const getVoicingNotes = (
 
 export const getCAGEDNotes = (root: string, shapeName: string, tuning: string[]) =>
   getVoicingNotes(root, "Major", shapeName, tuning);
+
+/**
+ * Implements the "Zero Index Law" for guitar voicings.
+ * Sorts voicing names so that the most playable, lowest-fret variation is first.
+ */
+export const getSortedVoicingNames = (
+  root: string,
+  chordType: string,
+  tuning: string[],
+  viewMode: string = 'chord'
+): string[] => {
+  const chordMap = CHORD_VOICINGS[chordType] || CHORD_VOICINGS["Major"];
+  const names = Object.keys(chordMap).filter(k => {
+    if (viewMode === 'triads') return k.toLowerCase().includes('triad');
+    if (viewMode === 'caged') return k.toLowerCase().includes('shape');
+    return true;
+  });
+
+  if (names.length <= 1) return names;
+
+  const tuningStrings = [...tuning].reverse();
+
+  const voicingInfo = names.map(name => {
+    const vNotes = getVoicingNotes(root, chordType, name, tuning);
+    const hasOpen = vNotes.some(vn => vn.fret === 0);
+
+    // Calculate baseFret and rootString
+    const shape = chordMap[name];
+    const rootNoteInfo = shape.find(n => n.interval === '1' || n.interval === 'R');
+    const rootString = rootNoteInfo?.string || 6;
+    const shapeRootRelativeFret = rootNoteInfo?.relativeFret || 0;
+
+    const openStringNote = tuningStrings[Math.min(rootString, tuningStrings.length) - 1];
+    const openNoteName = openStringNote.match(/[A-G]#?/)?.[0] || '';
+    const openNoteIndex = ALL_NOTES.indexOf(openNoteName);
+    const rootNoteIndex = ALL_NOTES.indexOf(root);
+
+    const rootFret = (rootNoteIndex - openNoteIndex + 12) % 12;
+    let baseFret = rootFret - shapeRootRelativeFret;
+    while (baseFret < 0) baseFret += 12;
+
+    return { name, hasOpen, baseFret, rootString };
+  });
+
+  voicingInfo.sort((a, b) => {
+    // 1. Priority A: Open Position
+    if (a.hasOpen && !b.hasOpen) return -1;
+    if (!a.hasOpen && b.hasOpen) return 1;
+
+    // 2. Priority B: Lowest Base Fret (especially 0-4)
+    if (a.baseFret !== b.baseFret) {
+      return a.baseFret - b.baseFret;
+    }
+
+    // 3. Secondary Sort: root_string (Descending: 6 -> 5 -> 4)
+    return b.rootString - a.rootString;
+  });
+
+  return voicingInfo.map(v => v.name);
+};
 
 export const GENRES = {
   "Blues / Funk": {
