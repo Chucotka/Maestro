@@ -82,8 +82,30 @@ dist
 # Vite-specific cache
 .vite
 
+# OS files
+.DS_Store
+*.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
+
+# Debug/temp files
+output.txt
+
 # Capacitor
 /android/capacitor.settings.gradle
 /ios/App/App.xcworkspace
 /ios/Pods/
 /ios/Podfile.lock
+
+# Temp/debug scripts
+reproduce_issue.js
+verify_caged.js
+verify_fixes.cjs
+verify_fixes_v2.py
+src/reproduce_issue.ts
+src/lib/temp_sorted_logic.ts
+mobile-test.html
+output.txt
+Archive.zip

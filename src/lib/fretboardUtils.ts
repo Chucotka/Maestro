@@ -3,32 +3,32 @@ export const ALL_NOTES = [
 ];
 
 export const GUITAR_TUNINGS = {
-  "Standard":       ["E2", "A2", "D3", "G3", "B3", "E4"],
-  "D Standard":     ["D2", "G2", "C3", "F3", "A3", "D4"],
-  "C Standard":     ["C2", "F2", "A#2", "D#3", "G3", "C4"],
-  "B Standard":     ["B1", "E2", "A2", "D3", "F#3", "B3"],
-  "Drop D":         ["D2", "A2", "D3", "G3", "B3", "E4"],
-  "Drop C#":        ["C#2", "G#2", "C#3", "F#3", "A#3", "D#4"],
-  "Drop C":         ["C2", "G2", "C3", "F3", "A3", "D4"],
-  "Drop B":         ["B1", "F#2", "B2", "E3", "G#3", "C#4"],
-  "Drop A":         ["A1", "E2", "A2", "D3", "F#3", "B3"],
-  "Open G":         ["D2", "G2", "D3", "G3", "B3", "D4"],
-  "Open D":         ["D2", "A2", "D3", "F#3", "A3", "D4"],
-  "Open C":         ["C2", "G2", "C3", "G3", "C4", "E4"],
-  "Open E":         ["E2", "B2", "E3", "G#3", "B3", "E4"],
-  "Open A":         ["E2", "A2", "E3", "A3", "C#4", "E4"],
-  "Open B":         ["B1", "F#2", "B2", "F#3", "B3", "D#4"],
-  "DADGAD":         ["D2", "A2", "D3", "G3", "A3", "D4"],
-  "Lute":           ["E2", "A2", "D3", "F#3", "B3", "E4"],
-  "New Standard":   ["C2", "G2", "D3", "A3", "E4", "G4"],
+  "Standard": ["E2", "A2", "D3", "G3", "B3", "E4"],
+  "D Standard": ["D2", "G2", "C3", "F3", "A3", "D4"],
+  "C Standard": ["C2", "F2", "A#2", "D#3", "G3", "C4"],
+  "B Standard": ["B1", "E2", "A2", "D3", "F#3", "B3"],
+  "Drop D": ["D2", "A2", "D3", "G3", "B3", "E4"],
+  "Drop C#": ["C#2", "G#2", "C#3", "F#3", "A#3", "D#4"],
+  "Drop C": ["C2", "G2", "C3", "F3", "A3", "D4"],
+  "Drop B": ["B1", "F#2", "B2", "E3", "G#3", "C#4"],
+  "Drop A": ["A1", "E2", "A2", "D3", "F#3", "B3"],
+  "Open G": ["D2", "G2", "D3", "G3", "B3", "D4"],
+  "Open D": ["D2", "A2", "D3", "F#3", "A3", "D4"],
+  "Open C": ["C2", "G2", "C3", "G3", "C4", "E4"],
+  "Open E": ["E2", "B2", "E3", "G#3", "B3", "E4"],
+  "Open A": ["E2", "A2", "E3", "A3", "C#4", "E4"],
+  "Open B": ["B1", "F#2", "B2", "F#3", "B3", "D#4"],
+  "DADGAD": ["D2", "A2", "D3", "G3", "A3", "D4"],
+  "Lute": ["E2", "A2", "D3", "F#3", "B3", "E4"],
+  "New Standard": ["C2", "G2", "D3", "A3", "E4", "G4"],
   "Half Step Down": ["D#2", "G#2", "C#3", "F#3", "A#3", "D#4"],
   "Full Step Down": ["D2", "G2", "C3", "F3", "A3", "D4"],
-  "7-String Std":   ["B1", "E2", "A2", "D3", "G3", "B3", "E4"],
-  "8-String Std":   ["F#1", "B1", "E2", "A2", "D3", "G3", "B3", "E4"],
+  "7-String Std": ["B1", "E2", "A2", "D3", "G3", "B3", "E4"],
+  "8-String Std": ["F#1", "B1", "E2", "A2", "D3", "G3", "B3", "E4"],
   "Bass (Standard)": ["E1", "A1", "D2", "G2"],
   "Bass (5-String)": ["B0", "E1", "A1", "D2", "G2"],
-  "Bass (Drop D)":  ["D1", "A1", "D2", "G2"],
-  "Ukulele (Std)":  ["G4", "C4", "E4", "A4"],
+  "Bass (Drop D)": ["D1", "A1", "D2", "G2"],
+  "Ukulele (Std)": ["G4", "C4", "E4", "A4"],
   "Ukulele (Low G)": ["G3", "C4", "E4", "A4"],
 };
 
@@ -115,7 +115,7 @@ export const getNoteAtFret = (openStringNoteWithOctave: string, fretNumber: numb
   const totalSemitones = startIndex + fretNumber;
   const noteIndex = totalSemitones % ALL_NOTES.length;
   const octaveOffset = Math.floor(totalSemitones / ALL_NOTES.length);
-  
+
   const finalNote = ALL_NOTES[noteIndex];
   const finalOctave = octave + octaveOffset;
 
@@ -544,11 +544,13 @@ export const getVoicingNotes = (
 
   if (!shape) return [];
 
-  const tuningStrings = [...tuning].reverse(); // from [E2...E4] to [E4...E2]
+  const tuningStrings = [...tuning].reverse(); // from [E2...E4] to [E4...E2] (Index 0 is High E)
   const rootString = shape.find(n => n.interval === '1' || n.interval === 'R')?.string || 6;
 
-  // Robustness for instruments with fewer strings (e.g. Ukulele)
   const effectiveRootString = Math.min(rootString, tuningStrings.length);
+  // String 1 (High E) corresponds to index 0
+  // String 6 (Low E) corresponds to index 5
+  // If rootString is 6, we want index 5 -> 6-1
   const openStringNote = tuningStrings[effectiveRootString - 1] || tuningStrings[tuningStrings.length - 1];
 
   const openNoteName = openStringNote.match(/[A-G]#?/)?.[0] || '';
@@ -566,8 +568,10 @@ export const getVoicingNotes = (
   return shape
     .filter(n => n.string <= tuningStrings.length)
     .map(n => {
-      const sIdx = tuningStrings.length - n.string;
-      const sOpenNote = tuning[sIdx]; // with octave, e.g. "E2"
+      // String 1 is index 0 in tuningStrings (High E)
+      // String 6 is index 5 in tuningStrings (Low E)
+      const sIdx = n.string - 1;
+      const sOpenNote = tuningStrings[sIdx];
       const absFret = baseFret + n.relativeFret;
       // Ensure fret is not negative
       const safeFret = Math.max(0, absFret);
@@ -718,4 +722,56 @@ export const getIntervalName = (semitones: number): string => {
 
 export const getScaleFormula = (intervals: number[]): string => {
   return intervals.map(i => getIntervalName(i)).join(' - ');
+};
+
+/**
+ * Returns a list of voicing names sorted by average fret position (lowest first).
+ * This ensures that open chords (frets 0-3) appear before barre chords (fret 3+).
+ */
+export const getSortedVoicings = (
+  root: string,
+  chordName: keyof typeof CHORDS,
+  tuning: string[] = GUITAR_TUNINGS["Standard"],
+  mode: 'chord' | 'triads' | 'caged' = 'chord'
+): string[] => {
+  const chordMap = CHORD_VOICINGS[chordName];
+  if (!chordMap) return [];
+
+  const voicingNames = Object.keys(chordMap).filter(k => {
+    if (mode === 'triads') return k.toLowerCase().includes('triad');
+    if (mode === 'caged') return k.toLowerCase().includes('shape');
+    return true;
+  });
+
+  return voicingNames.sort((a, b) => {
+    // If in standard chord mode, push triads to the end
+    if (mode === 'chord') {
+      const isTriadA = a.toLowerCase().includes('triad');
+      const isTriadB = b.toLowerCase().includes('triad');
+      if (isTriadA && !isTriadB) return 1;
+      if (!isTriadA && isTriadB) return -1;
+    }
+
+    // We need to calculate what the actual frets would be for this root
+    // But getVoicingNotes does exactly that!
+    const notesA = getVoicingNotes(root, chordName, a, tuning);
+    const notesB = getVoicingNotes(root, chordName, b, tuning);
+
+    if (notesA.length === 0) return 1;
+    if (notesB.length === 0) return -1;
+
+    // Use minimum fret to determine position
+    const minFretA = Math.min(...notesA.map(n => n.fret));
+    const minFretB = Math.min(...notesB.map(n => n.fret));
+
+    if (minFretA !== minFretB) {
+      return minFretA - minFretB;
+    }
+
+    // Tie-breaker: Average fret (lower average prefers "easier" or more compact shapes)
+    const avgA = notesA.reduce((sum, n) => sum + n.fret, 0) / notesA.length;
+    const avgB = notesB.reduce((sum, n) => sum + n.fret, 0) / notesB.length;
+
+    return avgA - avgB;
+  });
 };

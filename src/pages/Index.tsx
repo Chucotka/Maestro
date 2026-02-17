@@ -7,7 +7,7 @@ import Metronome from "@/components/Metronome";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
-import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Square, Pause, Loader2, ChevronLeft, ChevronRight, Settings, Mic, MicOff } from "lucide-react";
+import { Music, Guitar, Piano as PianoIcon, Zap, Volume2, Volume1, VolumeX, Square, Pause, Loader2, ChevronLeft, ChevronRight, Settings, Mic, MicOff, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, CHORD_VOICINGS, getVoicingNotes, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula } from "@/lib/fretboardUtils";
+import { ALL_NOTES, SCALES, CHORDS, GENRES, CAGED_SHAPES, CHORD_VOICINGS, getVoicingNotes, GUITAR_TUNINGS, romanToChord, getScaleNotes, getChordNotes, findScalesByNotes, getScaleFormula, getSortedVoicings } from "@/lib/fretboardUtils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +27,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { useAudioInput } from "@/hooks/useAudioInput";
+import { useSubscription } from "@/lib/subscription";
 
 type InstrumentType = 'guitar' | 'piano' | 'clean' | 'distortion' | 'bass' | 'ukulele';
 
@@ -42,9 +43,18 @@ const PIANO_URLS = {
 };
 
 const GUITAR_URLS = {
-  "A2": "A2.mp3", "C3": "C3.mp3", "Eb3": "Eb3.mp3", "Gb3": "Gb3.mp3",
-  "A3": "A3.mp3", "C4": "C4.mp3", "Eb4": "Eb4.mp3", "Gb4": "Gb4.mp3",
-  "A4": "A4.mp3", "C5": "C5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
+  "E2": "E2.mp3", "G2": "G2.mp3", "A2": "A2.mp3", "B2": "B2.mp3",
+  "C3": "C3.mp3", "D3": "D3.mp3", "Eb3": "Eb3.mp3", "F3": "F3.mp3", "Gb3": "Gb3.mp3", "Ab3": "Ab3.mp3",
+  "A3": "A3.mp3", "B3": "B3.mp3", "C4": "C4.mp3", "D4": "D4.mp3", "Eb4": "Eb4.mp3", "F4": "F4.mp3", "Gb4": "Gb4.mp3",
+  "A4": "A4.mp3", "B4": "B4.mp3", "C5": "C5.mp3", "D5": "D5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
+  "A5": "A5.mp3", "C6": "C6.mp3"
+};
+
+const ELECTRIC_GUITAR_URLS = {
+  "E2": "E2.mp3", "G2": "G2.mp3", "A2": "A2.mp3", "B2": "B2.mp3",
+  "C3": "C3.mp3", "D3": "D3.mp3", "Eb3": "Eb3.mp3", "F3": "F3.mp3", "Gb3": "Gb3.mp3", "Ab3": "Ab3.mp3",
+  "A3": "A3.mp3", "B3": "B3.mp3", "C4": "C4.mp3", "D4": "D4.mp3", "Eb4": "Eb4.mp3", "F4": "F4.mp3", "Gb4": "Gb4.mp3",
+  "A4": "A4.mp3", "B4": "B4.mp3", "C5": "C5.mp3", "D5": "D5.mp3", "Eb5": "Eb5.mp3", "Gb5": "Gb5.mp3",
   "A5": "A5.mp3", "C6": "C6.mp3"
 };
 
@@ -63,6 +73,7 @@ const BASS_URLS = {
 const Index = () => {
   const { t, language, setLanguage } = useI18n();
   const t_safe = (key: string) => t(key as never);
+  const { setShowPaywall, plan } = useSubscription();
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [loadingInstruments, setLoadingInstruments] = useState<Set<InstrumentType>>(new Set());
   const [loadedInstruments, setLoadedInstruments] = useState<Set<InstrumentType>>(new Set());
@@ -72,7 +83,7 @@ const Index = () => {
   const [selectedScaleName, setSelectedScaleName] = useState<keyof typeof SCALES>("MAJOR");
   const [selectedChordName, setSelectedChordName] = useState<keyof typeof CHORDS>("Major");
   const [currentVoicingIndex, setCurrentVoicingIndex] = useState(0);
-  const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("Shape E");
+  const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("Shape E (Barre)");
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
   const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual'>('scale');
   const [activeArpeggioNote, setActiveArpeggioNote] = useState<{ string?: number, fret?: number, noteName?: string } | null>(null);
@@ -80,10 +91,12 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [quizTarget, setQuizTarget] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const detectedNote = useAudioInput(isListening);
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>('default');
+  const { detectedNote, detectedNotes, noteHistory, micError, isSignalPresent, inputLevel, availableDevices, activeDeviceLabel } = useAudioInput(isListening, selectedAudioDevice);
   const { theme, setTheme } = useTheme();
-  
+
   const samplers = useRef<Partial<Record<InstrumentType, Tone.Sampler>>>({});
+  const effectChainsRef = useRef<Partial<Record<InstrumentType, Tone.ToneAudioNode[]>>>({});
   const arpeggioRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const isPlayingRef = useRef(false);
@@ -93,6 +106,25 @@ const Index = () => {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  // Mic error handling
+  useEffect(() => {
+    if (!micError) return;
+    setIsListening(false);
+    if (micError === 'mic_denied') {
+      toast.error(language === 'ru'
+        ? 'Доступ к микрофону запрещён. Разрешите в настройках браузера.'
+        : 'Microphone access denied. Please allow in browser settings.');
+    } else if (micError === 'mic_not_found') {
+      toast.error(language === 'ru'
+        ? 'Микрофон не найден. Подключите устройство.'
+        : 'No microphone found. Please connect a device.');
+    } else {
+      toast.error(language === 'ru'
+        ? 'Ошибка при подключении микрофона.'
+        : 'Error connecting to microphone.');
+    }
+  }, [micError, language]);
 
   const stopCurrent = useCallback(() => {
     if (playbackPartRef.current) {
@@ -115,41 +147,77 @@ const Index = () => {
     }
 
     const inst = selectedInstrument;
-    const sampler = samplers.current[inst];
-    if (!sampler || Tone.context.state !== 'running') {
-      toast.error("Audio not ready");
+    const currentSampler = samplers.current[inst];
+    if (!currentSampler || !currentSampler.loaded || Tone.context.state !== 'running') {
       return;
     }
 
-    // Determine what notes to play based on viewMode
-    let notes: string[] = [];
-    let isChord = false;
+    // Stop any previous playback
+    stopCurrent();
 
-    if (viewMode === 'chord') {
-      const chordMap = CHORD_VOICINGS[selectedChordName] || CHORD_VOICINGS["Major"];
-      const voicingNames = Object.keys(chordMap);
-      const vIdx = typeof forceStart === 'number' ? forceStart : currentVoicingIndex;
-      const voicingName = voicingNames[vIdx % voicingNames.length];
-      const vNotes = getVoicingNotes(selectedRoot, selectedChordName, voicingName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS]);
+    // --- Chord-based modes: play voicing as a strum ---
+    if (viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged') {
+      const tuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard;
 
-      const sampler = samplers.current[selectedInstrument];
-      if (sampler) {
-        sampler.triggerAttackRelease(vNotes.map(vn => vn.noteWithOctave), "2n");
+      let voicingName = '';
+      if (viewMode === 'caged') {
+        voicingName = selectedCagedShape;
+      } else {
+        const voicingNames = getSortedVoicings(selectedRoot, selectedChordName, tuning, viewMode === 'triads' ? 'triads' : 'chord');
+        const vIdx = typeof forceStart === 'number' ? forceStart : currentVoicingIndex;
+        voicingName = voicingNames[vIdx % voicingNames.length] || voicingNames[0];
+      }
+
+      const vNotes = getVoicingNotes(selectedRoot, selectedChordName, voicingName, tuning);
+      if (vNotes.length > 0) {
+        currentSampler.triggerAttackRelease(vNotes.map(vn => vn.noteWithOctave), "2n");
         setIsPlaying(true);
         setTimeout(() => setIsPlaying(false), 2000);
       }
       return;
-    } else if (viewMode === 'scale') {
-      notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
-    } else if (viewMode === 'caged' && selectedCagedShape) {
-      // For CAGED, we can play the chord notes
-      notes = getChordNotes(selectedRoot, CHORDS['Major']);
-      isChord = true;
-    } else {
-      // Default to scale notes for other modes
-      notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
     }
 
+    // --- Arpeggios mode: play chord notes one by one ---
+    if (viewMode === 'arpeggios') {
+      const tuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard;
+      const voicingNames = getSortedVoicings(selectedRoot, selectedChordName, tuning, 'chord');
+      const vName = voicingNames[currentVoicingIndex % voicingNames.length] || voicingNames[0];
+      const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, tuning);
+
+      if (vNotes.length > 0) {
+        const sorted = [...vNotes].sort((a, b) => {
+          const octA = parseInt(a.noteWithOctave.match(/\d+/)?.[0] || '3');
+          const octB = parseInt(b.noteWithOctave.match(/\d+/)?.[0] || '3');
+          if (octA !== octB) return octA - octB;
+          return ALL_NOTES.indexOf(a.noteName) - ALL_NOTES.indexOf(b.noteName);
+        });
+
+        const partEvents = sorted.map((vn, i) => ({ time: i * 0.2, note: vn.noteWithOctave, noteName: vn.noteName, string: vn.string, fret: vn.fret }));
+
+        if (playbackPartRef.current) playbackPartRef.current.dispose();
+        playbackPartRef.current = new Tone.Part((time, event) => {
+          currentSampler.triggerAttackRelease(event.note, "8n", time);
+          Tone.Draw.schedule(() => {
+            setActiveArpeggioNote({ noteName: event.noteName, string: event.string, fret: event.fret });
+          }, time);
+        }, partEvents).start(0);
+
+        const duration = partEvents.length * 0.2;
+        setIsPlaying(true);
+
+        if (Tone.Transport.state !== 'started') Tone.Transport.start();
+
+        stopTimeoutRef.current = Tone.Transport.scheduleOnce(() => {
+          setIsPlaying(false);
+          setActiveArpeggioNote(null);
+          stopTimeoutRef.current = null;
+        }, `+${duration + 0.5}`);
+      }
+      return;
+    }
+
+    // --- Scale mode and all other modes: play scale sequentially ---
+    const notes = getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
     if (notes.length === 0) return;
 
     let currentOctave = inst === 'bass' ? 1 : inst === 'ukulele' ? 4 : 3;
@@ -161,64 +229,49 @@ const Index = () => {
       return `${n}${currentOctave}`;
     });
 
-    if (playbackPartRef.current) {
-      playbackPartRef.current.dispose();
-    }
+    // Add the root note an octave higher at the end for completion
+    const rootIdx = ALL_NOTES.indexOf(notes[0]);
+    let finalOctave = currentOctave;
+    if (rootIdx < lastIdx) finalOctave++;
+    playNotes.push(`${notes[0]}${finalOctave}`);
 
-    if (isChord) {
-      sampler.triggerAttackRelease(playNotes, "2n");
-      // For chords, it's short, but we can still set isPlaying for a moment
-      setIsPlaying(true);
-      setTimeout(() => setIsPlaying(false), 2000);
-    } else {
-      const partEvents = playNotes.map((note, i) => ({ time: i * 0.25, note }));
+    if (playbackPartRef.current) playbackPartRef.current.dispose();
 
-      // Add the root note an octave higher at the end for completion
-      const rootIdx = ALL_NOTES.indexOf(notes[0]);
-      let finalOctave = currentOctave;
-      if (rootIdx < lastIdx) finalOctave++;
-      partEvents.push({ time: notes.length * 0.25, note: `${notes[0]}${finalOctave}` });
+    const partEvents = playNotes.map((note, i) => ({ time: i * 0.25, note }));
 
-      playbackPartRef.current = new Tone.Part((time, event) => {
-        sampler.triggerAttackRelease(event.note, "8n", time);
-      }, partEvents).start(0);
+    playbackPartRef.current = new Tone.Part((time, event) => {
+      currentSampler.triggerAttackRelease(event.note, "8n", time);
+    }, partEvents).start(0);
 
-      playbackPartRef.current.onstep = (time, event) => {
-        // Optional: track progress
-      };
+    const duration = partEvents.length * 0.25;
+    setIsPlaying(true);
 
-      const duration = (partEvents.length) * 0.25;
+    if (Tone.Transport.state !== 'started') Tone.Transport.start();
 
-      setIsPlaying(true);
-
-      if (Tone.Transport.state !== 'started') {
-        Tone.Transport.start();
-      }
-
-      // Automatically stop after duration
-      stopTimeoutRef.current = Tone.Transport.scheduleOnce(() => {
-        setIsPlaying(false);
-        stopTimeoutRef.current = null;
-      }, `+${duration + 0.5}`);
-    }
-  }, [selectedInstrument, selectedRoot, selectedChordName, currentVoicingIndex, selectedScaleName, viewMode, selectedCagedShape, stopCurrent]);
+    stopTimeoutRef.current = Tone.Transport.scheduleOnce(() => {
+      setIsPlaying(false);
+      stopTimeoutRef.current = null;
+    }, `+${duration + 0.5}`);
+  }, [selectedInstrument, selectedRoot, selectedChordName, currentVoicingIndex, selectedScaleName, viewMode, selectedCagedShape, stopCurrent, selectedTuningName]);
 
   // Reset voicing index when chord name changes
   useEffect(() => {
     setCurrentVoicingIndex(0);
   }, [selectedChordName]);
 
-  // Auto-play when root or type changed
+  // Auto-play when root or type changed (only if instrument is loaded)
   useEffect(() => {
-    if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled) {
-      playCurrent(true); // forceStart to avoid toggle during auto-play
+    if ((viewMode === 'chord' || viewMode === 'scale') && isAudioEnabled && loadedInstruments.has(selectedInstrument)) {
+      playCurrent(true);
     }
-  }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled, playCurrent]);
+  }, [selectedRoot, selectedChordName, selectedScaleName, viewMode, isAudioEnabled, playCurrent, loadedInstruments, selectedInstrument]);
 
   useEffect(() => {
     const currentSamplers = samplers.current;
+    const currentEffects = effectChainsRef.current;
     return () => {
       Object.values(currentSamplers).forEach(s => s?.dispose());
+      Object.values(currentEffects).forEach(chain => chain?.forEach(e => e.dispose()));
     };
   }, []);
 
@@ -232,21 +285,43 @@ const Index = () => {
     setLoadingInstruments(prev => new Set(prev).add(inst));
 
     try {
-      const urls = inst === 'piano' ? PIANO_URLS : inst === 'bass' ? BASS_URLS : inst === 'ukulele' ? UKULELE_URLS : GUITAR_URLS;
+      let urls: Record<string, string>;
       let baseUrl = "";
 
-      switch(inst) {
-        case 'piano': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_grand_piano-mp3/"; break;
-        case 'guitar': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/"; break;
-        case 'clean': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/"; break;
-        case 'distortion': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/distortion_guitar-mp3/"; break;
-        case 'bass': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_bass_finger-mp3/"; break;
-        case 'ukulele': baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/"; break;
+      switch (inst) {
+        case 'piano':
+          urls = PIANO_URLS;
+          baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_grand_piano-mp3/";
+          break;
+        case 'guitar':
+          urls = GUITAR_URLS;
+          baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/";
+          break;
+        case 'clean':
+          urls = ELECTRIC_GUITAR_URLS;
+          baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/";
+          break;
+        case 'distortion':
+          urls = ELECTRIC_GUITAR_URLS;
+          baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_guitar_clean-mp3/";
+          break;
+        case 'bass':
+          urls = BASS_URLS;
+          baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/electric_bass_finger-mp3/";
+          break;
+        case 'ukulele':
+          urls = UKULELE_URLS;
+          baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/";
+          break;
+        default:
+          urls = GUITAR_URLS;
+          baseUrl = "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/gh-pages/FluidR3_GM/acoustic_guitar_nylon-mp3/";
       }
 
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error("Timeout loading samples")), 30000);
-        samplers.current[inst] = new Tone.Sampler({
+
+        const sampler = new Tone.Sampler({
           urls,
           baseUrl,
           onload: () => {
@@ -257,13 +332,40 @@ const Index = () => {
             clearTimeout(timeout);
             reject(err);
           }
-        }).toDestination();
+        });
+
+        // Dispose previous effects if reloading
+        if (effectChainsRef.current[inst]) {
+          effectChainsRef.current[inst]!.forEach(e => e.dispose());
+          delete effectChainsRef.current[inst];
+        }
+
+        // Apply instrument-specific audio effects chain
+        if (inst === 'distortion') {
+          const drive = new Tone.Distortion({ distortion: 0.7, oversample: '4x' });
+          const cabFilter = new Tone.Filter({ frequency: 4500, type: 'lowpass', rolloff: -24 });
+          const midBoost = new Tone.EQ3({ low: -3, mid: 5, high: -6 });
+          const reverb = new Tone.Freeverb({ roomSize: 0.2, dampening: 4000 });
+          reverb.wet.value = 0.15;
+          sampler.chain(drive, cabFilter, midBoost, reverb, Tone.Destination);
+          effectChainsRef.current[inst] = [drive, cabFilter, midBoost, reverb];
+        } else if (inst === 'clean') {
+          const chorus = new Tone.Chorus({ frequency: 3.5, delayTime: 2.5, depth: 0.4 }).start();
+          chorus.wet.value = 0.3;
+          const reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 5000 });
+          reverb.wet.value = 0.2;
+          sampler.chain(chorus, reverb, Tone.Destination);
+          effectChainsRef.current[inst] = [chorus, reverb];
+        } else {
+          sampler.toDestination();
+        }
+
+        samplers.current[inst] = sampler;
       });
 
       setLoadedInstruments(prev => new Set(prev).add(inst));
     } catch (e) {
       console.error(`Error loading instrument ${inst}:`, e);
-      toast.error(`Failed to load ${inst} samples. Please check your connection.`);
     } finally {
       setLoadingInstruments(prev => {
         const next = new Set(prev);
@@ -299,30 +401,32 @@ const Index = () => {
   const isSelectedLoading = loadingInstruments.has(selectedInstrument);
 
   const activeNotesForArpeggio = useMemo(() => {
-    // If in chord/caged/triad mode, use specific voicing if possible
-    if (viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged') {
-      const chordMap = CHORD_VOICINGS[selectedChordName];
-      if (chordMap) {
-        const voicingNames = Object.keys(chordMap).filter(k =>
-          viewMode === 'triads' ? k.toLowerCase().includes('triad') :
-          viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
-        );
-        const vName = voicingNames[currentVoicingIndex % voicingNames.length] || Object.keys(chordMap)[0];
-        const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard);
-        if (vNotes.length > 0) {
-          return vNotes.map(vn => ({
-            noteName: vn.noteName,
-            string: vn.string,
-            fret: vn.fret,
-            noteWithOctave: vn.noteWithOctave
-          }));
-        }
+    // If in chord/caged/triad/arpeggios mode, use specific voicing if possible
+    if (viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged' || viewMode === 'arpeggios') {
+      const tuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard;
+
+      let vName = '';
+      if (viewMode === 'caged') {
+        vName = selectedCagedShape;
+      } else {
+        const voicingNames = getSortedVoicings(selectedRoot, selectedChordName, tuning, viewMode === 'triads' ? 'triads' : 'chord');
+        vName = voicingNames[currentVoicingIndex % voicingNames.length] || voicingNames[0];
+      }
+
+      const vNotes = getVoicingNotes(selectedRoot, selectedChordName, vName, tuning);
+      if (vNotes.length > 0) {
+        return vNotes.map(vn => ({
+          noteName: vn.noteName,
+          string: vn.string,
+          fret: vn.fret,
+          noteWithOctave: vn.noteWithOctave
+        }));
       }
       return getChordNotes(selectedRoot, CHORDS[selectedChordName] || CHORDS.Major);
     }
     // Default fallback: return chord notes for the current root
     return getChordNotes(selectedRoot, CHORDS[selectedChordName] || CHORDS.Major);
-  }, [viewMode, selectedRoot, selectedChordName, currentVoicingIndex, selectedTuningName]);
+  }, [viewMode, selectedRoot, selectedChordName, currentVoicingIndex, selectedTuningName, selectedCagedShape]);
 
   if (!isAudioEnabled) {
     return (
@@ -346,33 +450,42 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start bg-[#121212] transition-colors duration-300">
-      {/* Top Navigation Bar from Reference Image */}
-      <div className="w-full bg-[#1e1e1e] border-b border-stone-800 px-4 py-2 mb-4 overflow-x-auto landscape:mb-1 landscape:py-1">
-        <div className="flex items-center justify-center gap-1 md:gap-4 min-w-max landscape:gap-2">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-start bg-[#121212] transition-colors duration-300">
+      {/* Top Navigation Bar */}
+      <div className="w-full bg-[#1e1e1e] border-b border-stone-800 px-2 md:px-4 py-1.5 md:py-2 mb-2 md:mb-4 overflow-x-auto safe-area-top">
+        <div className="flex items-center gap-0.5 md:gap-4 min-w-max">
           {[
-            { id: 'chords', label: t('chords'), action: () => {
-              setViewMode('chord');
-              setCurrentVoicingIndex(0);
-            } },
-            { id: 'triads', label: t('triads'), action: () => {
-              setViewMode('triads');
-              setCurrentVoicingIndex(0);
-              toast.info(`${selectedRoot} Triads active`);
-            } },
-            { id: 'caged', label: t('caged'), action: () => {
-              setViewMode('caged');
-              setCurrentVoicingIndex(0);
-              toast.info(`${selectedRoot} CAGED Shapes active`);
-            }, hidden: selectedInstrument === 'ukulele' },
+            {
+              id: 'chords', label: t('chords'), action: () => {
+                setViewMode('chord');
+                setCurrentVoicingIndex(0);
+              }
+            },
+            {
+              id: 'triads', label: t('triads'), action: () => {
+                setViewMode('triads');
+                setCurrentVoicingIndex(0);
+                toast.info(`${selectedRoot} Triads active`);
+              }
+            },
+            {
+              id: 'caged', label: t('caged'), action: () => {
+                setViewMode('caged');
+                setCurrentVoicingIndex(0);
+                toast.info(`${selectedRoot} CAGED Shapes active`);
+              }, hidden: selectedInstrument === 'ukulele'
+            },
             { id: 'quiz', label: t('quiz'), action: () => setViewMode('quiz') },
             { id: 'finder', label: t('finder'), action: () => setViewMode('finder') },
             { id: 'scales', label: t('scales'), action: () => setViewMode('scale') },
-            { id: 'arpeggios', label: t('arpeggios'), action: () => {
-              setActiveTab("practice");
-              setTimeout(() => arpeggioRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-              toast.info("Arpeggiator");
-            } },
+            {
+              id: 'arpeggios', label: t('arpeggios'), action: () => {
+                setViewMode('arpeggios');
+                setActiveTab("practice");
+                setTimeout(() => arpeggioRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                toast.info("Arpeggiator");
+              }
+            },
             { id: 'notes', label: t('notes'), action: () => setViewMode('notes') },
             {
               id: 'tunings',
@@ -389,7 +502,7 @@ const Index = () => {
                     {item.label}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[300px] overflow-y-auto">
+                <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[40vh] overflow-y-auto">
                   {Object.keys(item.dropdown).map(val => (
                     <DropdownMenuItem key={val} onClick={() => {
                       if (item.onSelect) item.onSelect(val);
@@ -408,9 +521,9 @@ const Index = () => {
                 className={cn(
                   "text-gray-300 hover:text-white hover:bg-stone-800 font-bold px-2 md:px-4 text-xs md:text-sm",
                   (viewMode === 'chord' && item.id === 'chords' && !Object.keys(CHORD_VOICINGS[selectedChordName!] || {})[currentVoicingIndex]?.toLowerCase().includes('triad')) ||
-                  (viewMode === 'chord' && item.id === 'triads' && Object.keys(CHORD_VOICINGS[selectedChordName!] || {})[currentVoicingIndex]?.toLowerCase().includes('triad')) ||
-                  (viewMode === 'scale' && item.id === 'scales') ||
-                  (viewMode === item.id) ? "bg-stone-800 text-white" : "",
+                    (viewMode === 'chord' && item.id === 'triads' && Object.keys(CHORD_VOICINGS[selectedChordName!] || {})[currentVoicingIndex]?.toLowerCase().includes('triad')) ||
+                    (viewMode === 'scale' && item.id === 'scales') ||
+                    (viewMode === item.id) ? "bg-stone-800 text-white" : "",
                   (item as { hidden?: boolean }).hidden ? "hidden" : ""
                 )}
                 onClick={item.action}
@@ -421,21 +534,47 @@ const Index = () => {
           ))}
           <div className="flex-grow"></div>
 
-          <Button
-            variant={isListening ? "destructive" : "outline"}
-            size="sm"
-            className={cn(
-              "gap-2 font-bold h-8 transition-all",
-              isListening ? "animate-pulse" : "bg-[#2a2a2a] border-stone-700 text-gray-300"
+          {/* Guitar input feature temporarily disabled
+          <div className="flex items-center gap-1">
+            {isListening && availableDevices.length > 1 && (
+              <Select value={selectedAudioDevice} onValueChange={(val) => {
+                setSelectedAudioDevice(val);
+                setIsListening(false);
+                setTimeout(() => setIsListening(true), 100);
+              }}>
+                <SelectTrigger className="w-[140px] h-8 bg-[#2a2a2a] border-stone-700 text-[10px] text-gray-300">
+                  <SelectValue placeholder={language === 'ru' ? 'Источник' : 'Input'} />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1e1e1e] border-stone-800 text-gray-300">
+                  <SelectItem value="default" className="text-xs">
+                    {language === 'ru' ? 'По умолчанию' : 'Default'}
+                  </SelectItem>
+                  {availableDevices.map(d => (
+                    <SelectItem key={d.deviceId} value={d.deviceId} className="text-xs">
+                      {d.label.length > 30 ? d.label.slice(0, 30) + '...' : d.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
-            onClick={() => {
-              setIsListening(!isListening);
-              if (!isListening) toast.success(t('mic_enabled') || "Microphone enabled. Play your guitar!");
-            }}
-          >
-            {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            <span className="hidden sm:inline">{isListening ? t('stop_listening') || "Stop Listening" : t('connect_guitar') || "Connect Guitar"}</span>
-          </Button>
+            <Button
+              variant={isListening ? "destructive" : "outline"}
+              size="sm"
+              className={cn(
+                "gap-2 font-bold h-8 transition-all",
+                isListening ? "animate-pulse" : "bg-[#2a2a2a] border-stone-700 text-gray-300"
+              )}
+              onClick={() => {
+                const next = !isListening;
+                setIsListening(next);
+                if (next) toast.success(t('mic_enabled') || "Microphone enabled. Play your guitar!");
+              }}
+            >
+              {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+              <span className="hidden sm:inline">{isListening ? t('stop_listening') || "Stop Listening" : t('connect_guitar') || "Connect Guitar"}</span>
+            </Button>
+          </div>
+          */}
 
           <div className="flex items-center gap-2 px-2 border-l border-stone-700 ml-2">
             <Label className="text-[10px] text-stone-500 uppercase font-bold hidden md:block">{t('instrument')}</Label>
@@ -469,21 +608,30 @@ const Index = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="ghost" className="text-red-600 font-bold text-xl" onClick={() => toast.info(t('title'), { description: "Professional music theory dashboard for guitarists and pianists." })}>?</Button>
+          {plan === 'free' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[#b06a3b] hover:text-[#d4844a] font-bold gap-1"
+              onClick={() => setShowPaywall(true)}
+            >
+              <Crown className="h-4 w-4" />
+              <span className="hidden sm:inline">Pro</span>
+            </Button>
+          )}
         </div>
       </div>
 
       <div className="w-full max-w-7xl mx-auto px-4 landscape:px-2">
 
         {/* Root Note Selection Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-1 mb-4 landscape:mb-2 landscape:gap-0.5">
+        <div className="flex flex-wrap items-center justify-center gap-1 mb-2 md:mb-4">
           {ALL_NOTES.map((note) => (
             <Button
               key={note}
               variant="outline"
               className={cn(
-                "w-10 h-10 md:w-16 md:h-16 text-base md:text-lg font-bold transition-all border-stone-700 bg-[#2a2a2a] text-gray-300 hover:bg-stone-800 hover:text-white",
-                "landscape:w-11 landscape:h-11 landscape:text-base",
+                "w-9 h-9 sm:w-12 sm:h-12 md:w-16 md:h-16 text-sm sm:text-base md:text-lg font-bold transition-all border-stone-700 bg-[#2a2a2a] text-gray-300 hover:bg-stone-800 hover:text-white p-0",
                 selectedRoot === note ? "bg-[#b06a3b] text-white border-[#b06a3b] hover:bg-[#b06a3b]" : ""
               )}
               onClick={() => setSelectedRoot(note)}
@@ -594,13 +742,16 @@ const Index = () => {
                   selectedChordName={selectedChordName}
                   currentVoicingIndex={currentVoicingIndex}
                   selectedCagedShape={selectedCagedShape}
+                  onCagedShapeChange={setSelectedCagedShape}
                   selectedTuningName={selectedTuningName}
                   onTuningChange={setSelectedTuningName}
                   mode={viewMode}
                   onModeChange={setViewMode}
                   instrumentType={selectedInstrument}
                   sampler={samplers.current[selectedInstrument] || null}
-                  detectedNote={detectedNote}
+                  detectedNotes={detectedNotes}
+                  noteHistory={noteHistory}
+                  isListening={isListening}
                   activeArpeggioNote={activeArpeggioNote}
                   onNoteClick={(noteName) => {
                     if (viewMode === 'quiz' && quizTarget) {
@@ -632,21 +783,167 @@ const Index = () => {
             )}
           </div>
 
+          {/* Detected Note Indicator (Tuner Display) */}
+          {isListening && (
+            <div className="w-full bg-[#1a1a1a] border border-stone-800 rounded-lg my-2 transition-all overflow-hidden">
+              {/* Device info + signal level bar */}
+              <div className="flex items-center gap-2 px-3 py-1.5 border-b border-stone-800/50 bg-stone-900/30">
+                <Mic className={cn("h-3.5 w-3.5 shrink-0", isSignalPresent ? "text-green-400" : "text-stone-600")} />
+                <span className="text-[10px] text-stone-500 truncate flex-1">
+                  {activeDeviceLabel || (language === 'ru' ? 'Подключение...' : 'Connecting...')}
+                </span>
+                {/* Input level meter */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[9px] text-stone-600 font-mono">{language === 'ru' ? 'СИГНАЛ' : 'LEVEL'}</span>
+                  <div className="flex gap-[1px] items-end h-3">
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const threshold = (i + 1) / 12;
+                      const isLit = inputLevel >= threshold;
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "w-[3px] rounded-sm transition-all duration-75",
+                            isLit
+                              ? (i >= 10 ? "bg-red-400" : i >= 7 ? "bg-yellow-400" : "bg-green-400")
+                              : "bg-stone-800"
+                          )}
+                          style={{ height: `${4 + i}px` }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Main tuner section */}
+              <div className="p-3 flex items-center justify-center gap-3 md:gap-6">
+                {detectedNotes.length > 0 ? (
+                  <>
+                    {/* All detected notes display */}
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
+                      {detectedNotes.map((dn, idx) => (
+                        <div key={`${dn.note}-${idx}`} className="flex items-baseline gap-0.5">
+                          <span className={cn(
+                            "font-black tracking-tight drop-shadow-[0_0_10px_rgba(250,204,21,0.4)] transition-all",
+                            detectedNotes.length === 1 ? "text-4xl md:text-5xl" : "text-2xl md:text-3xl",
+                            "text-yellow-400"
+                          )}>
+                            {dn.name}
+                          </span>
+                          <span className={cn(
+                            "font-bold text-yellow-400/50",
+                            detectedNotes.length === 1 ? "text-lg" : "text-sm"
+                          )}>
+                            {dn.octave}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Info for primary note */}
+                    {detectedNote && (
+                      <div className="flex flex-col items-center gap-1">
+                        {/* Chord indicator */}
+                        {detectedNotes.length > 1 && (
+                          <span className="text-[10px] font-bold text-yellow-400/70 bg-yellow-400/10 px-2 py-0.5 rounded-full">
+                            {detectedNotes.length} {language === 'ru' ? 'нот' : 'notes'}
+                          </span>
+                        )}
+                        <span className="text-xs font-mono text-stone-400">
+                          {detectedNote.frequency} Hz
+                        </span>
+                        {/* Cents for primary */}
+                        <div className="flex items-center gap-1">
+                          <div className="flex gap-[2px] items-end">
+                            {Array.from({ length: 11 }).map((_, i) => {
+                              const barCents = (i - 5) * 10;
+                              const isCenter = i === 5;
+                              const isActive = Math.abs(detectedNote.cents - barCents) <= 8;
+                              return (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "w-[2px] rounded-sm transition-all duration-100",
+                                    isActive
+                                      ? (Math.abs(detectedNote.cents) <= 8 ? "bg-green-400" : Math.abs(detectedNote.cents) <= 20 ? "bg-yellow-400" : "bg-red-400")
+                                      : (isCenter ? "bg-stone-600" : "bg-stone-800")
+                                  )}
+                                  style={{ height: `${isActive ? 14 : (isCenter ? 12 : 8)}px` }}
+                                />
+                              );
+                            })}
+                          </div>
+                          <span className={cn(
+                            "text-[9px] font-mono font-bold",
+                            Math.abs(detectedNote.cents) <= 8 ? "text-green-400" : "text-yellow-400"
+                          )}>
+                            {detectedNote.cents > 0 ? '+' : ''}{detectedNote.cents}¢
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-stone-500 py-1">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("relative", isSignalPresent && "animate-pulse")}>
+                        <Mic className="h-5 w-5" />
+                        {isSignalPresent && <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full" />}
+                      </div>
+                      <span className="text-sm">
+                        {isSignalPresent
+                          ? (language === 'ru' ? 'Сигнал есть, но ноты не определены...' : 'Signal detected, analyzing...')
+                          : (language === 'ru' ? 'Нет сигнала. Играйте на гитаре' : 'No signal. Play your guitar')}
+                      </span>
+                    </div>
+                    {!isSignalPresent && inputLevel < 0.01 && (
+                      <p className="text-[10px] text-stone-600 text-center max-w-sm">
+                        {language === 'ru'
+                          ? 'Если подключена звуковая карта — выберите её в выпадающем меню рядом с кнопкой «Подключить гитару».'
+                          : 'If using an audio interface — select it from the dropdown next to "Connect Guitar".'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Note history trail */}
+              {noteHistory.length > 0 && (
+                <div className="border-t border-stone-800/50 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto">
+                  <span className="text-[9px] text-stone-600 font-bold uppercase tracking-wider shrink-0">
+                    {language === 'ru' ? 'Последние:' : 'Recent:'}
+                  </span>
+                  {noteHistory.map((h, i) => (
+                    <span
+                      key={`${h.note}-${h.timestamp}-${i}`}
+                      className="text-xs font-bold px-1.5 py-0.5 rounded bg-cyan-900/30 text-cyan-300 shrink-0 transition-opacity"
+                      style={{ opacity: Math.max(0.2, 1 - h.age) }}
+                    >
+                      {h.name}{h.octave}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Info Display and Playback Controls */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 p-2 md:p-4 landscape:p-2 landscape:gap-2">
             <div className="flex flex-col text-center md:text-left">
               <h2 className="text-xl md:text-3xl font-bold text-[#b06a3b] landscape:text-xl">
                 {viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}` :
-                 viewMode === 'triads' ? `${selectedRoot} ${selectedChordName} (Triad)` :
-                 viewMode === 'caged' ? `${selectedRoot} ${selectedChordName} (CAGED)` :
-                 `${selectedRoot} ${t_safe(selectedScaleName)}`}
+                  viewMode === 'triads' ? `${selectedRoot} ${selectedChordName} (Triad)` :
+                    viewMode === 'caged' ? `${selectedRoot} ${selectedChordName} (CAGED)` :
+                      viewMode === 'arpeggios' ? `${selectedRoot} ${selectedChordName} (Arpeggio)` :
+                        `${selectedRoot} ${t_safe(selectedScaleName)}`}
               </h2>
               <div className="flex flex-col gap-1">
                 <p className="text-xs md:text-base text-stone-500 font-mono landscape:text-xs">
                   {activeNotesForArpeggio.map(n => typeof n === 'string' ? n : n.noteName).join(' • ')}
                 </p>
                 <p className="text-[10px] md:text-xs text-[#b06a3b] font-bold uppercase tracking-widest bg-[#b06a3b]/10 px-2 py-0.5 rounded self-center md:self-start">
-                  {viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged' ? getScaleFormula(CHORDS[selectedChordName]) : getScaleFormula(SCALES[selectedScaleName])}
+                  {viewMode === 'chord' || viewMode === 'triads' || viewMode === 'caged' || viewMode === 'arpeggios' ? getScaleFormula(CHORDS[selectedChordName]) : getScaleFormula(SCALES[selectedScaleName])}
                 </p>
               </div>
             </div>
@@ -657,11 +954,8 @@ const Index = () => {
                 size="icon"
                 className="text-gray-300"
                 onClick={() => {
-                  const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
-                  const voicingNames = Object.keys(chordMap).filter(k =>
-                    viewMode === 'triads' ? k.toLowerCase().includes('triad') :
-                    viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
-                  );
+                  const tuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard;
+                  const voicingNames = getSortedVoicings(selectedRoot, selectedChordName!, tuning, viewMode === 'triads' ? 'triads' : viewMode === 'caged' ? 'caged' : 'chord');
                   const count = voicingNames.length || 1;
                   const nextIndex = (currentVoicingIndex - 1 + count) % count;
                   setCurrentVoicingIndex(nextIndex);
@@ -686,11 +980,8 @@ const Index = () => {
                 size="icon"
                 className="text-gray-300"
                 onClick={() => {
-                  const chordMap = CHORD_VOICINGS[selectedChordName!] || CHORD_VOICINGS["Major"];
-                  const voicingNames = Object.keys(chordMap).filter(k =>
-                    viewMode === 'triads' ? k.toLowerCase().includes('triad') :
-                    viewMode === 'caged' ? k.toLowerCase().includes('shape') : true
-                  );
+                  const tuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard;
+                  const voicingNames = getSortedVoicings(selectedRoot, selectedChordName!, tuning, viewMode === 'triads' ? 'triads' : viewMode === 'caged' ? 'caged' : 'chord');
                   const count = voicingNames.length || 1;
                   const nextIndex = (currentVoicingIndex + 1) % count;
                   setCurrentVoicingIndex(nextIndex);
@@ -703,49 +994,74 @@ const Index = () => {
           </div>
 
           {/* Bottom Action Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 landscape:mb-4 landscape:gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6 md:mb-8">
+            {/* Scale/Mode selector - always available */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800">
-                  <Music className="mr-2 h-5 w-5" /> {viewMode === 'chord' ? t('chordType') : viewMode === 'scale' ? t('scaleMode') : t('cagedShape')}
+                <Button variant="outline" className={cn(
+                  "h-12 md:h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800 overflow-hidden text-[11px] md:text-sm",
+                  viewMode === 'scale' && "border-[#b06a3b]/50"
+                )}>
+                  <Music className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="truncate">{t('scaleMode')}: {t_safe(selectedScaleName)}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[300px] overflow-y-auto">
-                {viewMode === 'chord'
-                  ? Object.keys(CHORDS).map(c => (
-                      <DropdownMenuItem key={c} onClick={() => { setSelectedChordName(c as keyof typeof CHORDS); setCurrentVoicingIndex(0); }} className="hover:bg-stone-800 focus:bg-stone-800">
-                        {c}
-                      </DropdownMenuItem>
-                    ))
-                  : viewMode === 'scale'
-                  ? Object.keys(SCALES).map(s => (
-                      <DropdownMenuItem key={s} onClick={() => { setSelectedScaleName(s as keyof typeof SCALES); setCurrentVoicingIndex(0); }} className="hover:bg-stone-800 focus:bg-stone-800">
-                        {t_safe(s)}
-                      </DropdownMenuItem>
-                    ))
-                  : Object.keys(CAGED_SHAPES).map(sh => (
-                      <DropdownMenuItem key={sh} onClick={() => setSelectedCagedShape(sh as keyof typeof CAGED_SHAPES)} className="hover:bg-stone-800 focus:bg-stone-800">
-                        Shape {sh}
-                      </DropdownMenuItem>
-                    ))
-                }
+              <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[40vh] overflow-y-auto">
+                {Object.keys(SCALES).map(s => (
+                  <DropdownMenuItem
+                    key={s}
+                    onClick={() => {
+                      setSelectedScaleName(s as keyof typeof SCALES);
+                      setCurrentVoicingIndex(0);
+                      if (viewMode !== 'scale') setViewMode('scale');
+                    }}
+                    className={cn(
+                      "hover:bg-stone-800 focus:bg-stone-800",
+                      selectedScaleName === s && "text-[#b06a3b] font-bold"
+                    )}
+                  >
+                    {t_safe(s)}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              variant="outline"
-              className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800"
-              onClick={() => toast.info(viewMode === 'chord' ? `${selectedRoot} ${selectedChordName}: ${activeNotesForArpeggio.join(', ')}` : `${selectedRoot} ${t_safe(selectedScaleName)}: ${activeNotesForArpeggio.join(', ')}`)}
-            >
-              <Zap className="mr-2 h-5 w-5" /> Info
+            {/* Chord type selector - always available */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className={cn(
+                  "h-12 md:h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800 overflow-hidden text-[11px] md:text-sm",
+                  (viewMode === 'chord' || viewMode === 'triads' || viewMode === 'arpeggios') && "border-[#b06a3b]/50"
+                )}>
+                  <Zap className="mr-2 h-5 w-5 shrink-0" />
+                  <span className="truncate">{t('chordType')}: {t_safe(selectedChordName)}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-[#1e1e1e] border-stone-800 text-gray-300 max-h-[40vh] overflow-y-auto">
+                {Object.keys(CHORDS).map(c => (
+                  <DropdownMenuItem
+                    key={c}
+                    onClick={() => {
+                      setSelectedChordName(c as keyof typeof CHORDS);
+                      setCurrentVoicingIndex(0);
+                    }}
+                    className={cn(
+                      "hover:bg-stone-800 focus:bg-stone-800",
+                      selectedChordName === c && "text-[#b06a3b] font-bold"
+                    )}
+                  >
+                    {t_safe(c)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="outline" className="h-12 md:h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800 text-[11px] md:text-sm" onClick={() => toast.info("Finding recommended scales...")}>
+              <Zap className="mr-2 h-4 w-4 md:h-5 md:w-5" /> {t('recScales')}
             </Button>
 
-            <Button variant="outline" className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.info("Finding recommended scales...")}>
-              <Zap className="mr-2 h-5 w-5" /> {t('recScales')}
-            </Button>
-
-            <Button variant="outline" className="h-16 landscape:h-12 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800" onClick={() => toast.success("Added to Favorites!")}>
-              <Zap className="mr-2 h-5 w-5 text-red-500" /> {t('myFav')}
+            <Button variant="outline" className="h-12 md:h-16 bg-[#2a2a2a] border-stone-700 text-gray-300 font-bold hover:bg-stone-800 text-[11px] md:text-sm" onClick={() => toast.success("Added to Favorites!")}>
+              <Zap className="mr-2 h-4 w-4 md:h-5 md:w-5 text-red-500" /> {t('myFav')}
             </Button>
           </div>
 
@@ -786,6 +1102,17 @@ const Index = () => {
                       sampler={samplers.current[selectedInstrument] || samplers.current.piano || null}
                       instrumentType={selectedInstrument}
                       onNotePlay={setActiveArpeggioNote}
+                      positions={(() => {
+                        const tuning = GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard;
+                        const voicingNames = getSortedVoicings(selectedRoot, selectedChordName, tuning, 'chord');
+                        return voicingNames.map((name, idx) => {
+                          const vNotes = getVoicingNotes(selectedRoot, selectedChordName, name, tuning);
+                          const minFret = vNotes.length > 0 ? Math.min(...vNotes.map(n => n.fret)) : 0;
+                          return { label: name.replace('Shape ', '').replace(' (Barre)', ' B'), fret: minFret, index: idx };
+                        });
+                      })()}
+                      currentPositionIndex={currentVoicingIndex}
+                      onPositionChange={(idx) => setCurrentVoicingIndex(idx)}
                     />
                   </div>
                   <Metronome />

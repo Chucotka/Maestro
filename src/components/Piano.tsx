@@ -110,7 +110,7 @@ const Piano: React.FC<PianoProps> = ({
                 {whiteKeys.map(key => {
                   const isHighlighted = activeNotesList.includes(key.note);
                   const isRoot = isHighlighted && key.note === selectedRoot;
-                  const isHeard = detectedNote ? detectedNote.name === key.note : false;
+                  const isHeard = detectedNote ? (detectedNote.name === key.note && detectedNote.octave === key.octave) : false;
 
                   let label = '';
                   if (showNoteNames) label = key.note;
@@ -145,7 +145,7 @@ const Piano: React.FC<PianoProps> = ({
               {blackKeys.map(key => {
                 const isHighlighted = activeNotesList.includes(key.note);
                 const isRoot = isHighlighted && key.note === selectedRoot;
-                const isHeard = detectedNote ? detectedNote.name === key.note : false;
+                const isHeard = detectedNote ? (detectedNote.name === key.note && detectedNote.octave === key.octave) : false;
 
                 const precedingWhiteNote = key.note === 'C#' ? 'C' :
                                            key.note === 'D#' ? 'D' :

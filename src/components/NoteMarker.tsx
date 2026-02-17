@@ -7,6 +7,7 @@ interface NoteMarkerProps {
   isHighlighted: boolean;
   size: number;
   onClick?: () => void;
+  className?: string;
 }
 
 const NoteMarker: React.FC<NoteMarkerProps> = ({
@@ -15,6 +16,7 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
   isHighlighted,
   size,
   onClick,
+  className,
 }) => {
   const [isActive, setIsActive] = useState(false);
 
@@ -36,16 +38,17 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
           // Highlighted States
           'shadow-lg': isRoot && isHighlighted && !isActive,
           'shadow-md': !isRoot && isHighlighted && !isActive,
-          
+
           // Root Note (Orange/Brown in the reference image)
           'border-[#b06a3b] text-[#b06a3b] bg-[#1a1a1a] shadow-[0_0_8px_rgba(176,106,59,0.5)] border-4': isRoot && isHighlighted,
-          
+
           // Other Scale Notes (Cream/Light in the reference image)
           'border-[#e5d5c0] text-[#e5d5c0] bg-[#1a1a1a]': !isRoot && isHighlighted,
-          
+
           // Non-Scale Notes (when showAllNotes is true)
           'border-stone-600 text-stone-500 bg-transparent': !isHighlighted,
-        }
+        },
+        className
       )}
       onClick={handleClick}
       style={{
