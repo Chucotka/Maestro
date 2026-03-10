@@ -136,6 +136,7 @@ const Index = () => {
       Tone.Transport.clear(stopTimeoutRef.current);
       stopTimeoutRef.current = null;
     }
+    Tone.Transport.stop();
     setIsPlaying(false);
   }, []);
 

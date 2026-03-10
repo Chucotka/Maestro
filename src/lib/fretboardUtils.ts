@@ -533,6 +533,16 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
 // Legacy support for CAGED mode
 export const CAGED_SHAPES = CHORD_VOICINGS["Major"];
 
+const intervalToSemitones = (interval: string): number => {
+  const map: Record<string, number> = {
+    '1': 0, 'R': 0,
+    'b2': 1, '2': 2, 'b3': 3, '3': 4,
+    '4': 5, 'b5': 6, '#4': 6, '5': 7,
+    '#5': 8, 'b6': 8, '6': 9, 'b7': 10, '7': 11,
+  };
+  return map[interval] ?? 0;
+};
+
 export const getVoicingNotes = (
   root: string,
   chordType: string,
@@ -548,9 +558,6 @@ export const getVoicingNotes = (
   const rootString = shape.find(n => n.interval === '1' || n.interval === 'R')?.string || 6;
 
   const effectiveRootString = Math.min(rootString, tuningStrings.length);
-  // String 1 (High E) corresponds to index 0
-  // String 6 (Low E) corresponds to index 5
-  // If rootString is 6, we want index 5 -> 6-1
   const openStringNote = tuningStrings[effectiveRootString - 1] || tuningStrings[tuningStrings.length - 1];
 
   const openNoteName = openStringNote.match(/[A-G]#?/)?.[0] || '';
@@ -565,16 +572,50 @@ export const getVoicingNotes = (
   // We want to keep it in a reasonable range, e.g. 0-12
   while (baseFret < 0) baseFret += 12;
 
+  // Check if tuning matches standard intervals — if so, use fast path with relativeFret
+  const STANDARD_INTERVALS = [5, 5, 5, 4, 5]; // semitones between adjacent strings (low to high)
+  const isStandardIntervals = tuningStrings.length === 6 && (() => {
+    // tuningStrings is reversed: [high E, B, G, D, A, low E]
+    // Adjacent interval from string i+1 to string i (higher strings have lower index)
+    for (let i = 0; i < 5; i++) {
+      const highNote = tuningStrings[i].match(/[A-G]#?/)?.[0] || '';
+      const lowNote = tuningStrings[i + 1].match(/[A-G]#?/)?.[0] || '';
+      const highIdx = ALL_NOTES.indexOf(highNote);
+      const lowIdx = ALL_NOTES.indexOf(lowNote);
+      const interval = (highIdx - lowIdx + 12) % 12;
+      if (interval !== STANDARD_INTERVALS[4 - i]) return false;
+    }
+    return true;
+  })();
+
   return shape
     .filter(n => n.string <= tuningStrings.length)
     .map(n => {
-      // String 1 is index 0 in tuningStrings (High E)
-      // String 6 is index 5 in tuningStrings (Low E)
       const sIdx = n.string - 1;
       const sOpenNote = tuningStrings[sIdx];
-      const absFret = baseFret + n.relativeFret;
-      // Ensure fret is not negative
-      const safeFret = Math.max(0, absFret);
+
+      let safeFret: number;
+
+      if (isStandardIntervals) {
+        // Standard tuning intervals: use original relativeFret calculation
+        safeFret = Math.max(0, baseFret + n.relativeFret);
+      } else {
+        // Non-standard tuning: calculate correct fret from interval
+        const sOpenNoteName = sOpenNote.match(/[A-G]#?/)?.[0] || '';
+        const sOpenNoteIdx = ALL_NOTES.indexOf(sOpenNoteName);
+        const semitones = intervalToSemitones(n.interval);
+        const targetNoteIndex = (rootNoteIndex + semitones) % 12;
+
+        // Calculate basic fret for target note on this string
+        let fret = (targetNoteIndex - sOpenNoteIdx + 12) % 12;
+
+        // Adjust octave to be near the baseFret playing position
+        while (fret < baseFret - 3 && fret + 12 <= 24) fret += 12;
+        while (fret > baseFret + 7 && fret - 12 >= 0) fret -= 12;
+
+        safeFret = Math.max(0, fret);
+      }
+
       const noteWithOctave = getNoteAtFret(sOpenNote, safeFret);
       const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
 
