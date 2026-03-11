@@ -292,8 +292,16 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
         sequenceRef.current = seq;
         if (wasStarted) sequenceRef.current.start(0);
       }
+    } else if (!isPlaying) {
+      // Update visual note display even when not playing
+      if (notes.length > 0 && sampler) {
+        const seq = createSequence();
+        if (seq) {
+          seq.dispose(); // We only needed to update patternNotesRef
+        }
+      }
     }
-  }, [notes, pattern, sampler, instrumentType, noteLength, octaves, createSequence]);
+  }, [notes, pattern, sampler, instrumentType, noteLength, octaves, createSequence, isPlaying]);
 
   useEffect(() => {
     Tone.Transport.bpm.value = tempo;

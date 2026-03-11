@@ -730,7 +730,7 @@ const Index = () => {
                 selectedRoot={selectedRoot}
                 selectedScaleName={selectedScaleName}
                 selectedChordName={selectedChordName}
-                mode={(viewMode === 'chord' || viewMode === 'scale') ? viewMode : 'scale'}
+                mode={(viewMode === 'chord' || viewMode === 'arpeggios') ? 'chord' : viewMode === 'scale' ? 'scale' : 'scale'}
                 onModeChange={(mode) => setViewMode(mode)}
                 sampler={samplers.current.piano || null}
                 detectedNote={detectedNote}

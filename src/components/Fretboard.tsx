@@ -98,7 +98,7 @@ const Fretboard: React.FC<FretboardProps> = ({
     if (mode === 'caged') {
       return getChordNotes(selectedRoot, CHORDS['Major']);
     }
-    if ((mode === 'chord' || mode === 'triads') && selectedChordName) {
+    if ((mode === 'chord' || mode === 'triads' || mode === 'arpeggios') && selectedChordName) {
       return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
     }
     return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
