@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, RotateCcw } from 'lucide-react';
@@ -178,26 +178,13 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
   const [octaves, setOctaves] = useState(1);
   const [currentNoteIndex, setCurrentNoteIndex] = useState(-1);
   const sequenceRef = useRef<Tone.Sequence | null>(null);
-  const patternNotesRef = useRef<ArpeggioNote[]>([]);
 
-  const stopArpeggio = useCallback(() => {
-    if (onNotePlay) onNotePlay(null);
-    setIsPlaying(false);
-    setCurrentNoteIndex(-1);
-    if (sequenceRef.current) {
-      sequenceRef.current.stop();
-      sequenceRef.current.dispose();
-      sequenceRef.current = null;
-    }
-  }, [onNotePlay]);
-
-  const createSequence = useCallback(() => {
-    if (!sampler || notes.length === 0) return null;
-    if (!sampler.loaded) return null;
+  // Compute pattern notes for visual display (independent of sampler)
+  const patternNotes = useMemo(() => {
+    if (notes.length === 0) return [];
 
     const noteObjects: ArpeggioNote[] = notes.map(n => typeof n === 'string' ? { noteName: n } : n);
 
-    // Assign octaves to base notes
     let currentOctave = instrumentType === 'bass' ? 1 : instrumentType === 'ukulele' ? 4 : 3;
     let lastNoteIndex = -1;
 
@@ -217,7 +204,6 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
       return { ...obj, noteWithOctave };
     });
 
-    // Extend across octaves
     let extendedData: ArpeggioNote[] = [...baseSequenceData];
     if (octaves > 1) {
       for (let oct = 1; oct < octaves; oct++) {
@@ -236,14 +222,28 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
       }
     }
 
-    // Apply pattern
-    const patterned = applyPattern(extendedData, pattern);
-    patternNotesRef.current = patterned;
+    return applyPattern(extendedData, pattern);
+  }, [notes, pattern, instrumentType, octaves]);
+
+  const stopArpeggio = useCallback(() => {
+    if (onNotePlay) onNotePlay(null);
+    setIsPlaying(false);
+    setCurrentNoteIndex(-1);
+    if (sequenceRef.current) {
+      sequenceRef.current.stop();
+      sequenceRef.current.dispose();
+      sequenceRef.current = null;
+    }
+  }, [onNotePlay]);
+
+  const createSequence = useCallback(() => {
+    if (!sampler || patternNotes.length === 0) return null;
+    if (!sampler.loaded) return null;
 
     let noteIdx = 0;
     return new Tone.Sequence((time, obj) => {
       sampler.triggerAttackRelease(obj.noteWithOctave!, noteLength, time);
-      const capturedIdx = noteIdx % patterned.length;
+      const capturedIdx = noteIdx % patternNotes.length;
       noteIdx++;
       if (onNotePlay) {
         Tone.Draw.schedule(() => {
@@ -251,8 +251,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
           setCurrentNoteIndex(capturedIdx);
         }, time);
       }
-    }, patterned, noteLength);
-  }, [sampler, notes, pattern, instrumentType, onNotePlay, noteLength, octaves]);
+    }, patternNotes, noteLength);
+  }, [sampler, patternNotes, onNotePlay, noteLength]);
 
   const startArpeggio = useCallback(async () => {
     if (!sampler) return;
@@ -292,16 +292,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
         sequenceRef.current = seq;
         if (wasStarted) sequenceRef.current.start(0);
       }
-    } else if (!isPlaying) {
-      // Update visual note display even when not playing
-      if (notes.length > 0 && sampler) {
-        const seq = createSequence();
-        if (seq) {
-          seq.dispose(); // We only needed to update patternNotesRef
-        }
-      }
     }
-  }, [notes, pattern, sampler, instrumentType, noteLength, octaves, createSequence, isPlaying]);
+  }, [patternNotes, sampler, createSequence, isPlaying]);
 
   useEffect(() => {
     Tone.Transport.bpm.value = tempo;
@@ -312,8 +304,6 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
       stopArpeggio();
     };
   }, [stopArpeggio]);
-
-  const patternNotes = patternNotesRef.current;
 
   return (
     <div className="flex flex-col gap-4 p-4 bg-[#1a1a1a] border border-stone-800 rounded-lg shadow-xl w-full">
