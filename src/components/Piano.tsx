@@ -112,14 +112,15 @@ const Piano: React.FC<PianoProps> = ({
                   const isRoot = isHighlighted && key.note === selectedRoot;
                   const isHeard = detectedNote ? (detectedNote.name === key.note && detectedNote.octave === key.octave) : false;
 
-                  let label = '';
-                  if (showNoteNames) label = key.note;
-                  else if (showDegrees && isHighlighted) {
+                  let degreeLabel = '';
+                  let noteLabel = '';
+                  if (isHighlighted) {
+                    noteLabel = key.note;
                     const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
                     const rootIndex = ALL_NOTES.indexOf(selectedRoot);
                     const matchingInterval = intervals.find(i => (rootIndex + i) % 12 === ALL_NOTES.indexOf(key.note));
                     const semitones = matchingInterval !== undefined ? matchingInterval : (ALL_NOTES.indexOf(key.note) - rootIndex + 12) % 12;
-                    label = getIntervalName(semitones);
+                    degreeLabel = getIntervalName(semitones);
                   }
 
                   return (
@@ -127,16 +128,37 @@ const Piano: React.FC<PianoProps> = ({
                       key={key.noteWithOctave}
                       onClick={() => handleNoteClick(key.noteWithOctave)}
                       className={cn(
-                        'flex-shrink-0 flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 bg-white hover:bg-slate-100',
-                        activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b]/50 scale-y-[0.98] z-20',
+                        'flex-shrink-0 flex flex-col items-center justify-end gap-0.5 p-0.5 pb-1.5 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100',
+                        activeNotes.has(key.noteWithOctave) && 'scale-y-[0.98] z-20',
                         isHeard && !activeNotes.has(key.noteWithOctave) && 'ring-2 ring-yellow-400 z-10 shadow-[0_0_10px_rgba(250,204,21,0.5)]',
-                        isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#b06a3b]/20': isRoot, 'bg-[#e5d5c0]/20': !isRoot }
                       )}
-                      style={{ width: `${keyDimensions.whiteKeyWidth}px`, backgroundColor: '#e5d5c0' }}
+                      style={{
+                        width: `${keyDimensions.whiteKeyWidth}px`,
+                        backgroundColor: activeNotes.has(key.noteWithOctave)
+                          ? '#b06a3b'
+                          : isHighlighted
+                            ? (isRoot ? '#c8845a' : '#d4b896')
+                            : '#e5d5c0'
+                      }}
                     >
-                      <span className={cn('font-bold select-none text-black', { 'text-xs': keyDimensions.whiteKeyWidth < 28 }, isHighlighted && { 'text-[#b06a3b]': isRoot, 'text-stone-800': !isRoot })}>
-                        {label}
-                      </span>
+                      {isHighlighted && (
+                        <>
+                          <span className={cn(
+                            'font-black select-none leading-none',
+                            isRoot ? 'text-white' : 'text-stone-700',
+                            keyDimensions.whiteKeyWidth < 22 ? 'text-[9px]' : 'text-xs'
+                          )}>
+                            {showDegrees ? degreeLabel : ''}
+                          </span>
+                          <span className={cn(
+                            'font-bold select-none leading-none',
+                            isRoot ? 'text-white/90' : 'text-stone-600',
+                            keyDimensions.whiteKeyWidth < 22 ? 'text-[8px]' : 'text-[10px]'
+                          )}>
+                            {noteLabel}
+                          </span>
+                        </>
+                      )}
                     </button>
                   );
                 })}
@@ -155,14 +177,15 @@ const Piano: React.FC<PianoProps> = ({
 
                 const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.note === precedingWhiteNote && wk.octave === key.octave);
 
-                let label = '';
-                if (showNoteNames) label = key.note;
-                else if (showDegrees && isHighlighted) {
+                let degreeLabel = '';
+                let noteLabel = '';
+                if (isHighlighted) {
+                  noteLabel = key.note;
                   const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
                   const rootIndex = ALL_NOTES.indexOf(selectedRoot);
                   const matchingInterval = intervals.find(i => (rootIndex + i) % 12 === ALL_NOTES.indexOf(key.note));
                   const semitones = matchingInterval !== undefined ? matchingInterval : (ALL_NOTES.indexOf(key.note) - rootIndex + 12) % 12;
-                  label = getIntervalName(semitones);
+                  degreeLabel = getIntervalName(semitones);
                 }
 
                 return (
@@ -170,21 +193,40 @@ const Piano: React.FC<PianoProps> = ({
                     key={key.noteWithOctave}
                     onClick={() => handleNoteClick(key.noteWithOctave)}
                     className={cn(
-                      'absolute flex items-start justify-center pt-1 border-stone-800 rounded-b-sm transition-all duration-100 z-10 bg-stone-900 hover:bg-stone-800 border pointer-events-auto',
-                      activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b] scale-y-[0.95] z-30',
+                      'absolute flex flex-col items-center justify-end gap-0.5 pb-1 border-stone-800 rounded-b-sm transition-all duration-100 z-10 border pointer-events-auto',
+                      activeNotes.has(key.noteWithOctave) && 'scale-y-[0.95] z-30',
                       isHeard && !activeNotes.has(key.noteWithOctave) && 'ring-2 ring-yellow-400 z-20 shadow-[0_0_10px_rgba(250,204,21,0.5)]',
-                      isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#4a2e1c]': isRoot, 'bg-[#2a2a2a]': !isRoot }
                     )}
                     style={{
                       width: `${keyDimensions.blackKeyWidth}px`,
                       height: '60%',
                       left: `${(precedingWhiteKeyIndex + 1) * keyDimensions.whiteKeyWidth - (keyDimensions.blackKeyWidth / 2)}px`,
                       top: 0,
+                      backgroundColor: activeNotes.has(key.noteWithOctave)
+                        ? '#b06a3b'
+                        : isHighlighted
+                          ? (isRoot ? '#8b4513' : '#3d3d3d')
+                          : '#1c1917'
                     }}
                   >
-                    <span className={cn('font-bold select-none text-white', { 'text-xs': keyDimensions.blackKeyWidth < 20 }, isHighlighted && { 'text-red-400': isRoot, 'text-sky-400': !isRoot })}>
-                      {label}
-                    </span>
+                    {isHighlighted && (
+                      <>
+                        <span className={cn(
+                          'font-black select-none leading-none',
+                          isRoot ? 'text-orange-300' : 'text-gray-300',
+                          keyDimensions.blackKeyWidth < 16 ? 'text-[8px]' : 'text-[10px]'
+                        )}>
+                          {showDegrees ? degreeLabel : ''}
+                        </span>
+                        <span className={cn(
+                          'font-bold select-none leading-none',
+                          isRoot ? 'text-orange-200/80' : 'text-gray-400',
+                          keyDimensions.blackKeyWidth < 16 ? 'text-[7px]' : 'text-[9px]'
+                        )}>
+                          {noteLabel}
+                        </span>
+                      </>
+                    )}
                   </button>
                 );
               })}
