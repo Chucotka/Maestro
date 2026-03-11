@@ -261,6 +261,11 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
       await Tone.start();
     }
 
+    // Stop and reset Transport to ensure clean state
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+    Tone.Transport.position = 0;
+
     if (sequenceRef.current) {
       sequenceRef.current.dispose();
     }
@@ -271,18 +276,19 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
       sequenceRef.current.start(0);
 
       Tone.Transport.bpm.value = tempo;
-      if (Tone.Transport.state !== 'started') {
-        Tone.Transport.start();
-      }
+      Tone.Transport.start();
       setIsPlaying(true);
     } else {
       toast.error("Could not start arpeggio. Check if audio is loaded.");
     }
   }, [sampler, tempo, createSequence]);
 
-  // Handle prop/setting changes while playing
+  // Handle prop/setting changes while playing — recreate sequence with new notes/pattern
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
+
   useEffect(() => {
-    if (isPlaying && sequenceRef.current) {
+    if (isPlayingRef.current && sequenceRef.current) {
       const wasStarted = sequenceRef.current.state === 'started';
       sequenceRef.current.stop();
       sequenceRef.current.dispose();
@@ -293,7 +299,8 @@ const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrum
         if (wasStarted) sequenceRef.current.start(0);
       }
     }
-  }, [patternNotes, sampler, createSequence, isPlaying]);
+    // Only react to patternNotes/sampler changes, not isPlaying
+  }, [patternNotes, sampler, createSequence]);
 
   useEffect(() => {
     Tone.Transport.bpm.value = tempo;
