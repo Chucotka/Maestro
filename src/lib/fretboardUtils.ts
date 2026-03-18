@@ -572,61 +572,75 @@ export const getVoicingNotes = (
   // We want to keep it in a reasonable range, e.g. 0-12
   while (baseFret < 0) baseFret += 12;
 
-  // Check if tuning matches standard intervals — if so, use fast path with relativeFret
-  const STANDARD_INTERVALS = [5, 5, 5, 4, 5]; // semitones between adjacent strings (low to high)
-  const isStandardIntervals = tuningStrings.length === 6 && (() => {
-    // tuningStrings is reversed: [high E, B, G, D, A, low E]
-    // Adjacent interval from string i+1 to string i (higher strings have lower index)
-    for (let i = 0; i < 5; i++) {
-      const highNote = tuningStrings[i].match(/[A-G]#?/)?.[0] || '';
-      const lowNote = tuningStrings[i + 1].match(/[A-G]#?/)?.[0] || '';
-      const highIdx = ALL_NOTES.indexOf(highNote);
-      const lowIdx = ALL_NOTES.indexOf(lowNote);
-      const interval = (highIdx - lowIdx + 12) % 12;
-      if (interval !== STANDARD_INTERVALS[4 - i]) return false;
-    }
-    return true;
-  })();
+  const filtered = shape.filter(n => n.string <= tuningStrings.length);
 
-  return shape
-    .filter(n => n.string <= tuningStrings.length)
-    .map(n => {
-      const sIdx = n.string - 1;
-      const sOpenNote = tuningStrings[sIdx];
+  // First pass: calculate fret closest to baseFret for each note
+  const fretData = filtered.map(n => {
+    const sIdx = n.string - 1;
+    const sOpenNote = tuningStrings[sIdx];
+    const sOpenNoteName = sOpenNote.match(/[A-G]#?/)?.[0] || '';
+    const sOpenNoteIdx = ALL_NOTES.indexOf(sOpenNoteName);
+    const semitones = intervalToSemitones(n.interval);
+    const targetNoteIndex = (rootNoteIndex + semitones) % 12;
 
-      let safeFret: number;
+    // Base fret for this note (0-11)
+    const baseFretForNote = (targetNoteIndex - sOpenNoteIdx + 12) % 12;
 
-      if (isStandardIntervals) {
-        // Standard tuning intervals: use original relativeFret calculation
-        safeFret = Math.max(0, baseFret + n.relativeFret);
-      } else {
-        // Non-standard tuning: calculate correct fret from interval
-        const sOpenNoteName = sOpenNote.match(/[A-G]#?/)?.[0] || '';
-        const sOpenNoteIdx = ALL_NOTES.indexOf(sOpenNoteName);
-        const semitones = intervalToSemitones(n.interval);
-        const targetNoteIndex = (rootNoteIndex + semitones) % 12;
-
-        // Calculate basic fret for target note on this string
-        let fret = (targetNoteIndex - sOpenNoteIdx + 12) % 12;
-
-        // Adjust octave to be near the baseFret playing position
-        while (fret < baseFret - 3 && fret + 12 <= 24) fret += 12;
-        while (fret > baseFret + 7 && fret - 12 >= 0) fret -= 12;
-
-        safeFret = Math.max(0, fret);
+    // Find octave closest to baseFret
+    let bestFret = baseFretForNote;
+    let bestDist = Math.abs(baseFretForNote - baseFret);
+    for (let candidate = baseFretForNote % 12; candidate <= 24; candidate += 12) {
+      const dist = Math.abs(candidate - baseFret);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestFret = candidate;
       }
+    }
 
-      const noteWithOctave = getNoteAtFret(sOpenNote, safeFret);
-      const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
+    return { ...n, fret: bestFret, sOpenNote, baseFretForNote };
+  });
 
-      return {
-        string: n.string,
-        fret: safeFret,
-        noteName,
-        noteWithOctave,
-        interval: n.interval
-      };
-    });
+  // Second pass: if spread is too wide (>5 frets), try to fix outliers
+  const frets = fretData.map(d => d.fret);
+  const minFret = Math.min(...frets);
+  const maxFret = Math.max(...frets);
+  if (maxFret - minFret > 5) {
+    // Calculate median fret as reference
+    const sortedFrets = [...frets].sort((a, b) => a - b);
+    const medianFret = sortedFrets[Math.floor(sortedFrets.length / 2)];
+
+    for (const d of fretData) {
+      // Try shifting outliers by octave to be closer to median
+      const candidates = [];
+      for (let c = d.baseFretForNote % 12; c <= 24; c += 12) {
+        candidates.push(c);
+      }
+      let bestCandidate = d.fret;
+      let bestDist = Math.abs(d.fret - medianFret);
+      for (const c of candidates) {
+        const dist = Math.abs(c - medianFret);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestCandidate = c;
+        }
+      }
+      d.fret = bestCandidate;
+    }
+  }
+
+  return fretData.map(d => {
+    const safeFret = Math.max(0, d.fret);
+    const noteWithOctave = getNoteAtFret(d.sOpenNote, safeFret);
+    const noteName = noteWithOctave.match(/[A-G]#?/)?.[0] || '';
+
+    return {
+      string: d.string,
+      fret: safeFret,
+      noteName,
+      noteWithOctave,
+      interval: d.interval
+    };
+  });
 };
 
 export const getCAGEDNotes = (root: string, shapeName: string, tuning: string[]) =>
