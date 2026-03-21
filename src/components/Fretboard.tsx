@@ -146,25 +146,35 @@ const Fretboard: React.FC<FretboardProps> = ({
     });
 
     // --- Map each detected note to ONE specific (string, fret) position ---
-    // Strategy: for each note, find the string where the fret is closest to
-    // typical playing position (prefer lower frets, but match octave correctly)
+    // Strategy: prefer the lowest-pitched (thickest) string that can play the note
+    // within a reasonable fret range. This matches how guitarists actually play:
+    // staying on one string across frets rather than jumping to an open string.
     const findBestString = (midiNote: number, usedStrings: Set<number>): { si: number; fret: number } | null => {
+      // displayTuning is reversed: index 0 = highest string, last = lowest string
+      // Iterate from lowest (thickest) string to highest
       let bestSi = -1;
       let bestFret = -1;
-      let bestScore = Infinity;
-      openMidis.forEach((om, si) => {
-        if (usedStrings.has(si)) return;
-        const f = midiNote - om;
-        if (f < 0 || f > numFrets) return;
-        // Score: prefer lower frets (more natural), but penalize open strings less
-        // Lower score = better match
-        const score = f === 0 ? 0.5 : f;
-        if (score < bestScore) {
-          bestScore = score;
+
+      for (let si = openMidis.length - 1; si >= 0; si--) {
+        if (usedStrings.has(si)) continue;
+        const f = midiNote - openMidis[si];
+        if (f < 0 || f > numFrets) continue;
+
+        // Pick this string if:
+        // 1. It's the first valid string found (from low to high), OR
+        // 2. The fret is within comfortable range (0-12)
+        if (f <= 12) {
+          bestSi = si;
+          bestFret = f;
+          break; // Take the lowest string that works within 12 frets
+        }
+        // If only high-fret options exist, keep as fallback
+        if (bestSi < 0) {
           bestSi = si;
           bestFret = f;
         }
-      });
+      }
+
       return bestSi >= 0 ? { si: bestSi, fret: bestFret } : null;
     };
 
