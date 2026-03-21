@@ -93,7 +93,7 @@ const Index = () => {
   const [quizTarget, setQuizTarget] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>('default');
-  const [monitorEnabled, setMonitorEnabled] = useState(false);
+  const [monitorEnabled, setMonitorEnabled] = useState(true);
   const [monitorVolume, setMonitorVolume] = useState(0.7);
   const { detectedNote, detectedNotes, noteHistory, micError, isSignalPresent, inputLevel, availableDevices, activeDeviceLabel } = useAudioInput(isListening, selectedAudioDevice, monitorEnabled, monitorVolume);
   const { theme, setTheme } = useTheme();
@@ -585,6 +585,24 @@ const Index = () => {
               {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               <span className="hidden sm:inline">{isListening ? t('stop_listening') || "Stop Listening" : t('connect_guitar') || "Connect Guitar"}</span>
             </Button>
+            {isListening && (
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-8 w-8 p-0 transition-all",
+                  monitorEnabled
+                    ? "bg-green-900/30 border-green-700 text-green-400 hover:bg-green-900/50"
+                    : "bg-[#2a2a2a] border-stone-700 text-stone-500 hover:text-white"
+                )}
+                onClick={() => setMonitorEnabled(!monitorEnabled)}
+                title={monitorEnabled
+                  ? (language === 'ru' ? 'Выключить звук гитары' : 'Mute guitar')
+                  : (language === 'ru' ? 'Включить звук гитары' : 'Unmute guitar')}
+              >
+                {monitorEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 px-2 border-l border-stone-700 ml-2">

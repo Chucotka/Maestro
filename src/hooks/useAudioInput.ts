@@ -53,6 +53,12 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
+  // Keep latest monitor values in refs so async startAudio() always reads current values
+  const monitorEnabledRef = useRef(monitorEnabled);
+  const monitorVolumeRef = useRef(monitorVolume);
+  monitorEnabledRef.current = monitorEnabled;
+  monitorVolumeRef.current = monitorVolume;
+
   // Note tracker for stabilization (not in React state — mutated each frame)
   const trackersRef = useRef<Map<number, NoteTracker>>(new Map());
   const historyRef = useRef<NoteHistoryEntry[]>([]);
@@ -158,7 +164,7 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
 
         // Monitor output — route input to speakers/headphones
         const monitorGain = ctx.createGain();
-        monitorGain.gain.value = monitorEnabled ? monitorVolume : 0;
+        monitorGain.gain.value = monitorEnabledRef.current ? monitorVolumeRef.current : 0;
         source.connect(monitorGain);
         monitorGain.connect(ctx.destination);
         monitorGainRef.current = monitorGain;
