@@ -50,6 +50,7 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const monitorGainRef = useRef<GainNode | null>(null);
+  const monitorAudioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -80,6 +81,11 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
     if (monitorGainRef.current) {
       monitorGainRef.current.disconnect();
       monitorGainRef.current = null;
+    }
+    if (monitorAudioRef.current) {
+      monitorAudioRef.current.pause();
+      monitorAudioRef.current.srcObject = null;
+      monitorAudioRef.current = null;
     }
     trackersRef.current = new Map();
     historyRef.current = [];
@@ -171,27 +177,53 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
 
         const source = ctx.createMediaStreamSource(stream);
 
-        // Monitor output — Web Audio API: source → gain → destination
+        // Monitor output: source → gain → MediaStreamDestination → <audio> element
+        // Using <audio> element allows routing to a specific output device (e.g. speakers)
+        // while AudioContext.destination goes to the audio interface
         const monitorGain = ctx.createGain();
         const vol = monitorEnabledRef.current ? monitorVolumeRef.current : 0;
         monitorGain.gain.value = vol;
         source.connect(monitorGain);
-        monitorGain.connect(ctx.destination);
+
+        const monitorDest = ctx.createMediaStreamDestination();
+        monitorGain.connect(monitorDest);
         monitorGainRef.current = monitorGain;
 
-        // Try to route output to default speakers (not audio interface)
-        // setSinkId is Chrome 110+ — silently skip if unsupported
-        if ('setSinkId' in ctx && typeof (ctx as any).setSinkId === 'function') {
+        // Play the processed stream through an <audio> element
+        const audioEl = document.createElement('audio');
+        audioEl.srcObject = monitorDest.stream;
+        audioEl.autoplay = true;
+        audioEl.volume = 1.0; // volume controlled by GainNode
+
+        // Try to set output to built-in speakers (not the audio interface)
+        if ('setSinkId' in audioEl) {
           try {
-            await (ctx as any).setSinkId('');
-            console.log('[Audio Monitor] output set to default speakers');
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const outputs = devices.filter(d => d.kind === 'audiooutput');
+            // Find built-in speakers (not the audio interface)
+            const builtIn = outputs.find(d =>
+              d.label.toLowerCase().includes('built-in') ||
+              d.label.toLowerCase().includes('speaker') ||
+              d.label.toLowerCase().includes('встроен') ||
+              d.label.toLowerCase().includes('динамик') ||
+              d.deviceId === 'default'
+            );
+            if (builtIn) {
+              await (audioEl as any).setSinkId(builtIn.deviceId);
+              console.log('[Audio Monitor] output device:', builtIn.label);
+            } else if (outputs.length > 0) {
+              // Log available outputs for debugging
+              console.log('[Audio Monitor] available outputs:', outputs.map(d => d.label).join(', '));
+            }
           } catch (e) {
             console.warn('[Audio Monitor] setSinkId failed:', e);
           }
         }
-        console.log('[Audio Monitor] Web Audio connected, gain =', vol,
-          'state =', ctx.state, 'sampleRate =', ctx.sampleRate,
-          'dest channels =', ctx.destination.maxChannelCount);
+
+        await audioEl.play().catch(e => console.warn('[Audio Monitor] play failed:', e));
+        monitorAudioRef.current = audioEl;
+        console.log('[Audio Monitor] connected via <audio> element, gain =', vol,
+          'state =', ctx.state, 'sampleRate =', ctx.sampleRate);
 
         // Analyser for pitch detection (separate branch)
         const analyser = ctx.createAnalyser();
