@@ -146,43 +146,50 @@ const Fretboard: React.FC<FretboardProps> = ({
     });
 
     // --- Map each detected note to ONE specific (string, fret) position ---
+    // Strategy: for each note, find the string where the fret is closest to
+    // typical playing position (prefer lower frets, but match octave correctly)
+    const findBestString = (midiNote: number, usedStrings: Set<number>): { si: number; fret: number } | null => {
+      let bestSi = -1;
+      let bestFret = -1;
+      let bestScore = Infinity;
+      openMidis.forEach((om, si) => {
+        if (usedStrings.has(si)) return;
+        const f = midiNote - om;
+        if (f < 0 || f > numFrets) return;
+        // Score: prefer lower frets (more natural), but penalize open strings less
+        // Lower score = better match
+        const score = f === 0 ? 0.5 : f;
+        if (score < bestScore) {
+          bestScore = score;
+          bestSi = si;
+          bestFret = f;
+        }
+      });
+      return bestSi >= 0 ? { si: bestSi, fret: bestFret } : null;
+    };
+
     const heardPositions = new Set<string>();
     if (isListening && detectedNotes.length > 0) {
       const usedStrings = new Set<number>();
+      // Sort low to high — assign lowest notes first (they have fewer string options)
       const sorted = [...detectedNotes].sort((a, b) => a.note - b.note);
       for (const dn of sorted) {
-        let bestSi = -1;
-        let bestFret = Infinity;
-        openMidis.forEach((om, si) => {
-          if (usedStrings.has(si)) return;
-          const f = dn.note - om;
-          if (f >= 0 && f <= numFrets && f < bestFret) {
-            bestSi = si;
-            bestFret = f;
-          }
-        });
-        if (bestSi >= 0) {
-          heardPositions.add(`${bestSi}:${bestFret}`);
-          usedStrings.add(bestSi);
+        const best = findBestString(dn.note, usedStrings);
+        if (best) {
+          heardPositions.add(`${best.si}:${best.fret}`);
+          usedStrings.add(best.si);
+          console.log(`[Note Map] ${dn.name}${dn.octave} (MIDI ${dn.note}) → string ${displayTuning.length - best.si} fret ${best.fret} (openMidi ${openMidis[best.si]})`);
         }
       }
     }
 
-    // --- Map each history note to ONE position (lowest fret) ---
+    // --- Map each history note to ONE position ---
     const historyPositionAges = new Map<string, number>();
     if (isListening && noteHistory.length > 0) {
       for (const h of noteHistory) {
-        let bestSi = -1;
-        let bestFret = Infinity;
-        openMidis.forEach((om, si) => {
-          const f = h.note - om;
-          if (f >= 0 && f <= numFrets && f < bestFret) {
-            bestSi = si;
-            bestFret = f;
-          }
-        });
-        if (bestSi >= 0) {
-          const key = `${bestSi}:${bestFret}`;
+        const best = findBestString(h.note, new Set());
+        if (best) {
+          const key = `${best.si}:${best.fret}`;
           if (!heardPositions.has(key) && (!historyPositionAges.has(key) || h.age < historyPositionAges.get(key)!)) {
             historyPositionAges.set(key, h.age);
           }
