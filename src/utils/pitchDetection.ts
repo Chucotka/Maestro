@@ -109,9 +109,14 @@ export function detectMultiplePitches(
   }
 
   // Aggressive harmonic rejection:
-  // Process strongest first; mark weaker peaks that are harmonics of stronger ones
+  // Process from LOWEST frequency to highest. This is critical for guitar because
+  // low strings (E2, A2) often have stronger 2nd/3rd harmonics than their fundamental.
+  // Processing low→high ensures we accept the fundamental first and correctly reject
+  // its harmonics, instead of the reverse (accepting harmonic, rejecting fundamental).
+  const sortedByFreq = [...merged].sort((a, b) => a.freq - b.freq);
+
   const fundamentals: Peak[] = [];
-  for (const peak of merged) {
+  for (const peak of sortedByFreq) {
     let isHarmonic = false;
 
     for (const fund of fundamentals) {
@@ -120,24 +125,15 @@ export function detectMultiplePitches(
         const expected = fund.freq * h;
         const tol = h <= 4 ? 0.015 : 0.025; // tighter for lower harmonics
         if (Math.abs(peak.freq - expected) / expected < tol) {
-          isHarmonic = true;
+          // Only reject if the fundamental is reasonably strong
+          // (within 20 dB — harmonics CAN be louder than fundamental on guitar)
+          if (fund.mag >= peak.mag - 20) {
+            isHarmonic = true;
+          }
           break;
         }
       }
       if (isHarmonic) break;
-    }
-
-    // Also check: is peak a subharmonic ghost? (F/2 or F/3 of a much stronger peak)
-    if (!isHarmonic) {
-      for (const fund of fundamentals) {
-        for (const div of [2, 3]) {
-          if (Math.abs(fund.freq / peak.freq - div) < 0.03 && fund.mag > peak.mag + 6) {
-            isHarmonic = true;
-            break;
-          }
-        }
-        if (isHarmonic) break;
-      }
     }
 
     if (!isHarmonic) {
