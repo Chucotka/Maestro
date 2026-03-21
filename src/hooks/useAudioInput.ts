@@ -123,6 +123,19 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
     const startAudio = async () => {
       try {
         setMicError(null);
+
+        // iOS/Safari: unlock audio output by playing a silent buffer
+        // This must happen in the same call stack as user gesture
+        try {
+          const unlockCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const buf = unlockCtx.createBuffer(1, 1, 22050);
+          const src = unlockCtx.createBufferSource();
+          src.buffer = buf;
+          src.connect(unlockCtx.destination);
+          src.start(0);
+          await unlockCtx.close();
+        } catch { /* ignore */ }
+
         const constraints: MediaTrackConstraints = {
           echoCancellation: false,
           noiseSuppression: false,
@@ -151,23 +164,29 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
         }
 
         const AC = window.AudioContext || (window as any).webkitAudioContext;
-        const ctx = new AC({ sampleRate: 44100 });
+        // Don't force sampleRate — let browser use native rate for compatibility
+        const ctx = new AC();
         audioContextRef.current = ctx;
         if (ctx.state === 'suspended') await ctx.resume();
 
         const source = ctx.createMediaStreamSource(stream);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 8192;
-        analyser.smoothingTimeConstant = 0.75; // heavy smoothing for stable spectrum
-        source.connect(analyser);
-        analyserRef.current = analyser;
 
         // Monitor output — route input to speakers/headphones
+        // Connect BEFORE analyser so the audio chain is: source → gain → destination
         const monitorGain = ctx.createGain();
-        monitorGain.gain.value = monitorEnabledRef.current ? monitorVolumeRef.current : 0;
+        const vol = monitorEnabledRef.current ? monitorVolumeRef.current : 0;
+        monitorGain.gain.value = vol;
         source.connect(monitorGain);
         monitorGain.connect(ctx.destination);
         monitorGainRef.current = monitorGain;
+        console.log('[Audio Monitor] connected, gain =', vol, 'sampleRate =', ctx.sampleRate);
+
+        // Analyser for pitch detection (separate branch, doesn't affect monitor)
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 8192;
+        analyser.smoothingTimeConstant = 0.75;
+        source.connect(analyser);
+        analyserRef.current = analyser;
 
         const freqBuf = new Float32Array(analyser.frequencyBinCount);
         const timeBuf = new Float32Array(analyser.fftSize);
