@@ -49,7 +49,7 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const monitorGainRef = useRef<GainNode | null>(null);
+  const monitorAudioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -77,9 +77,10 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
       audioContextRef.current = null;
     }
     analyserRef.current = null;
-    if (monitorGainRef.current) {
-      monitorGainRef.current.disconnect();
-      monitorGainRef.current = null;
+    if (monitorAudioRef.current) {
+      monitorAudioRef.current.pause();
+      monitorAudioRef.current.srcObject = null;
+      monitorAudioRef.current = null;
     }
     trackersRef.current = new Map();
     historyRef.current = [];
@@ -171,17 +172,16 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
 
         const source = ctx.createMediaStreamSource(stream);
 
-        // Monitor output — route input to speakers/headphones
-        // Connect BEFORE analyser so the audio chain is: source → gain → destination
-        const monitorGain = ctx.createGain();
-        const vol = monitorEnabledRef.current ? monitorVolumeRef.current : 0;
-        monitorGain.gain.value = vol;
-        source.connect(monitorGain);
-        monitorGain.connect(ctx.destination);
-        monitorGainRef.current = monitorGain;
-        console.log('[Audio Monitor] connected, gain =', vol, 'sampleRate =', ctx.sampleRate);
+        // Monitor output — use <audio> element for reliable playback
+        // This works across all browsers, including when audio interface is connected
+        const audioEl = new Audio();
+        audioEl.srcObject = stream;
+        audioEl.volume = monitorEnabledRef.current ? monitorVolumeRef.current : 0;
+        audioEl.play().catch(e => console.warn('[Audio Monitor] autoplay blocked:', e));
+        monitorAudioRef.current = audioEl;
+        console.log('[Audio Monitor] <audio> element created, volume =', audioEl.volume);
 
-        // Analyser for pitch detection (separate branch, doesn't affect monitor)
+        // Analyser for pitch detection (Web Audio API branch)
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 8192;
         analyser.smoothingTimeConstant = 0.75;
@@ -325,14 +325,10 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, moni
     return () => { disposed = true; cleanup(); };
   }, [isActive, selectedDeviceId, cleanup]);
 
-  // Update monitor gain in real-time without restarting audio
+  // Update monitor volume in real-time without restarting audio
   useEffect(() => {
-    if (monitorGainRef.current) {
-      monitorGainRef.current.gain.setTargetAtTime(
-        monitorEnabled ? monitorVolume : 0,
-        monitorGainRef.current.context.currentTime,
-        0.05 // smooth 50ms ramp to avoid clicks
-      );
+    if (monitorAudioRef.current) {
+      monitorAudioRef.current.volume = monitorEnabled ? monitorVolume : 0;
     }
   }, [monitorEnabled, monitorVolume]);
 
