@@ -35,10 +35,10 @@ interface FretboardProps {
   onCagedShapeChange?: (shape: any) => void;
   selectedTuningName: string;
   onTuningChange: (tuning: string) => void;
-  mode: 'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual';
+  mode: 'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual' | 'tuner';
   sampler: Tone.Sampler | null;
   instrumentType: 'guitar' | 'clean' | 'distortion' | 'bass' | 'ukulele';
-  onModeChange?: (mode: 'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual') => void;
+  onModeChange?: (mode: 'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual' | 'tuner') => void;
   onNoteClick?: (noteName: string, noteWithOctave: string) => void;
   detectedNotes?: DetectedNote[];
   noteHistory?: NoteHistoryEntry[];
@@ -382,11 +382,13 @@ const Fretboard: React.FC<FretboardProps> = ({
             <div className="relative flex flex-col flex-shrink-0" style={{ width: STRING_LABEL_WIDTH_PX }}>
               {displayTuning.map((note, i) => {
                 const openNote = fretboardNotes.find(fn => fn.stringIndex === i && fn.fretNumber === 0);
-                // In listening mode: show only heard/history notes, not scale overlay
-                const shouldRenderScale = openNote && !isListening && (showAllNotes || openNote.isScaleNote);
+                // In tuner-only mode: show only heard/history notes
+                // In other modes with listening: show both scale/chord notes AND heard overlay
+                const isTunerOnly = isListening && mode === 'tuner';
+                const shouldRenderScale = openNote && !isTunerOnly && (showAllNotes || openNote.isScaleNote);
                 const shouldRenderListening = openNote && isListening && (openNote.isHeard || openNote.isHistoryNote);
                 const shouldRender = shouldRenderScale || shouldRenderListening;
-                const markerContent = openNote ? (showNoteNames ? openNote.noteName : (openNote.isScaleNote && !isListening ? openNote.sequenceNumber! : openNote.noteName)) : '';
+                const markerContent = openNote ? (showNoteNames ? openNote.noteName : (openNote.isScaleNote && !isTunerOnly ? openNote.sequenceNumber! : openNote.noteName)) : '';
 
                 return (
                   <div
@@ -405,8 +407,8 @@ const Fretboard: React.FC<FretboardProps> = ({
                       >
                         <NoteMarker
                           content={markerContent}
-                          isRoot={openNote!.isRoot && !isListening}
-                          isHighlighted={isListening ? (openNote!.isHeard || openNote!.isHistoryNote) : (openNote!.isScaleNote || openNote!.isHeard)}
+                          isRoot={openNote!.isRoot && !isTunerOnly}
+                          isHighlighted={isTunerOnly ? (openNote!.isHeard || openNote!.isHistoryNote) : (openNote!.isScaleNote || openNote!.isHeard)}
                           size={markerSize * 0.85}
                           className={cn(
                             openNote!.isHeard && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-[#1a1a1a] shadow-[0_0_20px_rgba(250,204,21,0.7)] scale-110",
@@ -485,15 +487,16 @@ const Fretboard: React.FC<FretboardProps> = ({
               {fretboardNotes
                 .filter((note) => note.fretNumber > 0)
                 .map((note, index) => {
-                  // In listening mode: only show heard + history notes
-                  // In normal mode: show scale/chord notes + heard + arpeggio
-                  const shouldRenderNormal = !isListening && (showAllNotes || note.isScaleNote || note.isHeard || note.isArpeggioActive);
+                  // In tuner-only mode: only show heard + history notes
+                  // In other modes (even with listening): show scale/chord notes + heard overlay
+                  const isTunerOnly = isListening && mode === 'tuner';
+                  const shouldRenderNormal = !isTunerOnly && (showAllNotes || note.isScaleNote || note.isHeard || note.isArpeggioActive);
                   const shouldRenderListening = isListening && (note.isHeard || note.isHistoryNote);
                   if (!shouldRenderNormal && !shouldRenderListening) return null;
 
                   const leftPos = note.fretNumber * fretWidth - fretWidth / 2;
                   const topPos = note.stringIndex * stringHeight + stringHeight / 2;
-                  const markerContent = isListening
+                  const markerContent = isTunerOnly
                     ? note.noteName
                     : (showNoteNames ? note.noteName : (note.isScaleNote ? note.sequenceNumber! : note.noteName));
 
@@ -515,8 +518,8 @@ const Fretboard: React.FC<FretboardProps> = ({
                     >
                       <NoteMarker
                         content={markerContent}
-                        isRoot={note.isRoot && !isListening}
-                        isHighlighted={isListening
+                        isRoot={note.isRoot && !isTunerOnly}
+                        isHighlighted={isTunerOnly
                           ? (note.isHeard || note.isHistoryNote)
                           : (note.isScaleNote || note.isHeard || note.isArpeggioActive)}
                         size={note.isHeard ? markerSize * 1.15 : markerSize}

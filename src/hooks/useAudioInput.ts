@@ -38,7 +38,7 @@ interface NoteTracker {
   lastPitch: { freq: number; cents: number; mag: number };
 }
 
-export const useAudioInput = (isActive: boolean, selectedDeviceId?: string) => {
+export const useAudioInput = (isActive: boolean, selectedDeviceId?: string, monitorEnabled: boolean = false, monitorVolume: number = 0.8) => {
   const [detectedNotes, setDetectedNotes] = useState<DetectedNote[]>([]);
   const [noteHistory, setNoteHistory] = useState<NoteHistoryEntry[]>([]);
   const [micError, setMicError] = useState<string | null>(null);
@@ -49,6 +49,7 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string) => {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const monitorGainRef = useRef<GainNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -70,6 +71,10 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string) => {
       audioContextRef.current = null;
     }
     analyserRef.current = null;
+    if (monitorGainRef.current) {
+      monitorGainRef.current.disconnect();
+      monitorGainRef.current = null;
+    }
     trackersRef.current = new Map();
     historyRef.current = [];
   }, []);
@@ -150,6 +155,13 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string) => {
         analyser.smoothingTimeConstant = 0.75; // heavy smoothing for stable spectrum
         source.connect(analyser);
         analyserRef.current = analyser;
+
+        // Monitor output — route input to speakers/headphones
+        const monitorGain = ctx.createGain();
+        monitorGain.gain.value = monitorEnabled ? monitorVolume : 0;
+        source.connect(monitorGain);
+        monitorGain.connect(ctx.destination);
+        monitorGainRef.current = monitorGain;
 
         const freqBuf = new Float32Array(analyser.frequencyBinCount);
         const timeBuf = new Float32Array(analyser.fftSize);
@@ -287,6 +299,17 @@ export const useAudioInput = (isActive: boolean, selectedDeviceId?: string) => {
     startAudio();
     return () => { disposed = true; cleanup(); };
   }, [isActive, selectedDeviceId, cleanup]);
+
+  // Update monitor gain in real-time without restarting audio
+  useEffect(() => {
+    if (monitorGainRef.current) {
+      monitorGainRef.current.gain.setTargetAtTime(
+        monitorEnabled ? monitorVolume : 0,
+        monitorGainRef.current.context.currentTime,
+        0.05 // smooth 50ms ramp to avoid clicks
+      );
+    }
+  }, [monitorEnabled, monitorVolume]);
 
   const detectedNote = detectedNotes.length > 0
     ? detectedNotes.reduce((best, n) => n.confidence > best.confidence ? n : best, detectedNotes[0])

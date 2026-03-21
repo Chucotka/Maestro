@@ -406,8 +406,8 @@ export const CHORD_VOICINGS: Record<string, Record<string, VoicingNote[]>> = {
     "Shape Dm7": [
       { string: 4, relativeFret: 0, interval: '1' },
       { string: 3, relativeFret: 2, interval: '5' },
-      { string: 2, relativeFret: 1, interval: 'b3' },
-      { string: 1, relativeFret: 1, interval: 'b7' },
+      { string: 2, relativeFret: 1, interval: 'b7' },
+      { string: 1, relativeFret: 1, interval: 'b3' },
     ],
     "Shape Gm7": [
       { string: 6, relativeFret: 3, interval: '1' },
@@ -600,32 +600,37 @@ export const getVoicingNotes = (
     return { ...n, fret: bestFret, sOpenNote, baseFretForNote };
   });
 
-  // Second pass: if spread is too wide (>5 frets), try to fix outliers
-  const frets = fretData.map(d => d.fret);
-  const minFret = Math.min(...frets);
-  const maxFret = Math.max(...frets);
-  if (maxFret - minFret > 5) {
-    // Calculate median fret as reference
-    const sortedFrets = [...frets].sort((a, b) => a - b);
-    const medianFret = sortedFrets[Math.floor(sortedFrets.length / 2)];
-
-    for (const d of fretData) {
-      // Try shifting outliers by octave to be closer to median
-      const candidates = [];
-      for (let c = d.baseFretForNote % 12; c <= 24; c += 12) {
-        candidates.push(c);
-      }
-      let bestCandidate = d.fret;
-      let bestDist = Math.abs(d.fret - medianFret);
-      for (const c of candidates) {
-        const dist = Math.abs(c - medianFret);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestCandidate = c;
-        }
-      }
-      d.fret = bestCandidate;
+  // Second pass: find the tightest possible fret cluster
+  // Build all octave candidates for each note
+  const allCandidates = fretData.map(d => {
+    const candidates: number[] = [];
+    for (let c = d.baseFretForNote % 12; c <= 24; c += 12) {
+      candidates.push(c);
     }
+    return candidates;
+  });
+
+  // Try all combinations to find minimum spread
+  const findBest = (idx: number, current: number[]): number[] => {
+    if (idx === allCandidates.length) return [...current];
+    let bestCombo: number[] | null = null;
+    let bestSpread = Infinity;
+    for (const c of allCandidates[idx]) {
+      current.push(c);
+      const combo = findBest(idx + 1, current);
+      const spread = Math.max(...combo) - Math.min(...combo);
+      if (spread < bestSpread || (spread === bestSpread && bestCombo && Math.max(...combo) < Math.max(...bestCombo))) {
+        bestSpread = spread;
+        bestCombo = combo;
+      }
+      current.pop();
+    }
+    return bestCombo || current;
+  };
+
+  const bestFrets = findBest(0, []);
+  for (let i = 0; i < fretData.length; i++) {
+    fretData[i].fret = bestFrets[i];
   }
 
   return fretData.map(d => {

@@ -4,6 +4,7 @@ import CircleOfFifths from "@/components/CircleOfFifths";
 import ProgressionGenerator from "@/components/ProgressionGenerator";
 import ArpeggioPlayer from "@/components/ArpeggioPlayer";
 import Metronome from "@/components/Metronome";
+import { GuitarTuner } from "@/components/GuitarTuner";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import * as Tone from 'tone';
 import { Button } from "@/components/ui/button";
@@ -85,14 +86,16 @@ const Index = () => {
   const [currentVoicingIndex, setCurrentVoicingIndex] = useState(0);
   const [selectedCagedShape, setSelectedCagedShape] = useState<keyof typeof CAGED_SHAPES>("Shape E (Barre)");
   const [selectedTuningName, setSelectedTuningName] = useState<string>("Standard");
-  const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual'>('scale');
+  const [viewMode, setViewMode] = useState<'scale' | 'chord' | 'caged' | 'quiz' | 'finder' | 'notes' | 'triads' | 'arpeggios' | 'virtual' | 'tuner'>('scale');
   const [activeArpeggioNote, setActiveArpeggioNote] = useState<{ string?: number, fret?: number, noteName?: string } | null>(null);
   const [volume, setVolume] = useState(0.8);
   const [searchQuery, setSearchQuery] = useState('');
   const [quizTarget, setQuizTarget] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>('default');
-  const { detectedNote, detectedNotes, noteHistory, micError, isSignalPresent, inputLevel, availableDevices, activeDeviceLabel } = useAudioInput(isListening, selectedAudioDevice);
+  const [monitorEnabled, setMonitorEnabled] = useState(false);
+  const [monitorVolume, setMonitorVolume] = useState(0.7);
+  const { detectedNote, detectedNotes, noteHistory, micError, isSignalPresent, inputLevel, availableDevices, activeDeviceLabel } = useAudioInput(isListening, selectedAudioDevice, monitorEnabled, monitorVolume);
   const { theme, setTheme } = useTheme();
 
   const samplers = useRef<Partial<Record<InstrumentType, Tone.Sampler>>>({});
@@ -494,7 +497,16 @@ const Index = () => {
               dropdown: GUITAR_TUNINGS,
               onSelect: (val: string) => setSelectedTuningName(val)
             },
-            { id: 'virtual', label: t('virtual'), action: () => { setViewMode('virtual'); toast.info(t('virtual_desc')); } }
+            { id: 'virtual', label: t('virtual'), action: () => { setViewMode('virtual'); toast.info(t('virtual_desc')); } },
+            {
+              id: 'tuner', label: language === 'ru' ? 'Тюнер' : 'Tuner', action: () => {
+                setViewMode('tuner');
+                if (!isListening) {
+                  setIsListening(true);
+                  toast.success(language === 'ru' ? 'Тюнер включён. Играйте на гитаре!' : 'Tuner enabled. Play your guitar!');
+                }
+              }
+            }
           ].map((item) => (
             item.dropdown ? (
               <DropdownMenu key={item.id}>
@@ -535,7 +547,6 @@ const Index = () => {
           ))}
           <div className="flex-grow"></div>
 
-          {/* Guitar input feature temporarily disabled
           <div className="flex items-center gap-1">
             {isListening && availableDevices.length > 1 && (
               <Select value={selectedAudioDevice} onValueChange={(val) => {
@@ -575,7 +586,6 @@ const Index = () => {
               <span className="hidden sm:inline">{isListening ? t('stop_listening') || "Stop Listening" : t('connect_guitar') || "Connect Guitar"}</span>
             </Button>
           </div>
-          */}
 
           <div className="flex items-center gap-2 px-2 border-l border-stone-700 ml-2">
             <Label className="text-[10px] text-stone-500 uppercase font-bold hidden md:block">{t('instrument')}</Label>
@@ -784,149 +794,129 @@ const Index = () => {
             )}
           </div>
 
-          {/* Detected Note Indicator (Tuner Display) */}
-          {isListening && (
-            <div className="w-full bg-[#1a1a1a] border border-stone-800 rounded-lg my-2 transition-all overflow-hidden">
-              {/* Device info + signal level bar */}
-              <div className="flex items-center gap-2 px-3 py-1.5 border-b border-stone-800/50 bg-stone-900/30">
+          {/* Compact Listening Bar — fixed height, no layout jumps */}
+          {isListening && viewMode !== 'tuner' && (
+            <div className="w-full bg-[#1a1a1a] border border-stone-800 rounded-lg my-1 overflow-hidden">
+              <div className="flex items-center gap-2 px-3 h-10">
+                {/* Mic indicator */}
                 <Mic className={cn("h-3.5 w-3.5 shrink-0", isSignalPresent ? "text-green-400" : "text-stone-600")} />
-                <span className="text-[10px] text-stone-500 truncate flex-1">
-                  {activeDeviceLabel || (language === 'ru' ? 'Подключение...' : 'Connecting...')}
-                </span>
-                {/* Input level meter */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-[9px] text-stone-600 font-mono">{language === 'ru' ? 'СИГНАЛ' : 'LEVEL'}</span>
-                  <div className="flex gap-[1px] items-end h-3">
-                    {Array.from({ length: 12 }).map((_, i) => {
-                      const threshold = (i + 1) / 12;
-                      const isLit = inputLevel >= threshold;
-                      return (
-                        <div
-                          key={i}
-                          className={cn(
-                            "w-[3px] rounded-sm transition-all duration-75",
-                            isLit
-                              ? (i >= 10 ? "bg-red-400" : i >= 7 ? "bg-yellow-400" : "bg-green-400")
-                              : "bg-stone-800"
-                          )}
-                          style={{ height: `${4 + i}px` }}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
 
-              {/* Main tuner section */}
-              <div className="p-3 flex items-center justify-center gap-3 md:gap-6">
-                {detectedNotes.length > 0 ? (
-                  <>
-                    {/* All detected notes display */}
-                    <div className="flex items-center gap-2 flex-wrap justify-center">
+                {/* Detected notes or waiting message */}
+                <div className="flex-1 flex items-center gap-2 min-w-0 overflow-hidden">
+                  {detectedNotes.length > 0 ? (
+                    <>
                       {detectedNotes.map((dn, idx) => (
-                        <div key={`${dn.note}-${idx}`} className="flex items-baseline gap-0.5">
-                          <span className={cn(
-                            "font-black tracking-tight drop-shadow-[0_0_10px_rgba(250,204,21,0.4)] transition-all",
-                            detectedNotes.length === 1 ? "text-4xl md:text-5xl" : "text-2xl md:text-3xl",
-                            "text-yellow-400"
-                          )}>
+                        <span key={`${dn.note}-${idx}`} className="flex items-baseline gap-0.5 shrink-0">
+                          <span className="text-xl font-black text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]">
                             {dn.name}
                           </span>
-                          <span className={cn(
-                            "font-bold text-yellow-400/50",
-                            detectedNotes.length === 1 ? "text-lg" : "text-sm"
-                          )}>
-                            {dn.octave}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Info for primary note */}
-                    {detectedNote && (
-                      <div className="flex flex-col items-center gap-1">
-                        {/* Chord indicator */}
-                        {detectedNotes.length > 1 && (
-                          <span className="text-[10px] font-bold text-yellow-400/70 bg-yellow-400/10 px-2 py-0.5 rounded-full">
-                            {detectedNotes.length} {language === 'ru' ? 'нот' : 'notes'}
-                          </span>
-                        )}
-                        <span className="text-xs font-mono text-stone-400">
-                          {detectedNote.frequency} Hz
+                          <span className="text-xs font-bold text-yellow-400/50">{dn.octave}</span>
                         </span>
-                        {/* Cents for primary */}
-                        <div className="flex items-center gap-1">
-                          <div className="flex gap-[2px] items-end">
-                            {Array.from({ length: 11 }).map((_, i) => {
-                              const barCents = (i - 5) * 10;
-                              const isCenter = i === 5;
-                              const isActive = Math.abs(detectedNote.cents - barCents) <= 8;
-                              return (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    "w-[2px] rounded-sm transition-all duration-100",
-                                    isActive
-                                      ? (Math.abs(detectedNote.cents) <= 8 ? "bg-green-400" : Math.abs(detectedNote.cents) <= 20 ? "bg-yellow-400" : "bg-red-400")
-                                      : (isCenter ? "bg-stone-600" : "bg-stone-800")
-                                  )}
-                                  style={{ height: `${isActive ? 14 : (isCenter ? 12 : 8)}px` }}
-                                />
-                              );
-                            })}
+                      ))}
+                      {detectedNote && (
+                        <>
+                          <span className="text-[10px] font-mono text-stone-500 shrink-0">{detectedNote.frequency.toFixed(1)} Hz</span>
+                          {/* Mini cents bar */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex gap-[1px] items-center">
+                              {Array.from({ length: 7 }).map((_, i) => {
+                                const barCents = (i - 3) * 15;
+                                const isActive = Math.abs(detectedNote.cents - barCents) <= 10;
+                                return (
+                                  <div
+                                    key={i}
+                                    className={cn(
+                                      "w-[2px] rounded-sm",
+                                      isActive
+                                        ? (Math.abs(detectedNote.cents) <= 8 ? "bg-green-400" : Math.abs(detectedNote.cents) <= 20 ? "bg-yellow-400" : "bg-red-400")
+                                        : (i === 3 ? "bg-stone-500" : "bg-stone-800")
+                                    )}
+                                    style={{ height: `${isActive ? 12 : (i === 3 ? 10 : 6)}px` }}
+                                  />
+                                );
+                              })}
+                            </div>
+                            <span className={cn(
+                              "text-[9px] font-mono font-bold",
+                              Math.abs(detectedNote.cents) <= 8 ? "text-green-400" : "text-yellow-400"
+                            )}>
+                              {detectedNote.cents > 0 ? '+' : ''}{detectedNote.cents}¢
+                            </span>
                           </div>
-                          <span className={cn(
-                            "text-[9px] font-mono font-bold",
-                            Math.abs(detectedNote.cents) <= 8 ? "text-green-400" : "text-yellow-400"
-                          )}>
-                            {detectedNote.cents > 0 ? '+' : ''}{detectedNote.cents}¢
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-stone-500 py-1">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("relative", isSignalPresent && "animate-pulse")}>
-                        <Mic className="h-5 w-5" />
-                        {isSignalPresent && <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full" />}
-                      </div>
-                      <span className="text-sm">
-                        {isSignalPresent
-                          ? (language === 'ru' ? 'Сигнал есть, но ноты не определены...' : 'Signal detected, analyzing...')
-                          : (language === 'ru' ? 'Нет сигнала. Играйте на гитаре' : 'No signal. Play your guitar')}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-xs text-stone-500 truncate">
+                      {isSignalPresent
+                        ? (language === 'ru' ? 'Анализ...' : 'Analyzing...')
+                        : (language === 'ru' ? 'Играйте на гитаре' : 'Play your guitar')}
+                    </span>
+                  )}
+                </div>
+
+                {/* Level meter */}
+                <div className="flex gap-[1px] items-end h-3 shrink-0">
+                  {Array.from({ length: 8 }).map((_, i) => {
+                    const threshold = (i + 1) / 8;
+                    const isLit = inputLevel >= threshold;
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-[2px] rounded-sm transition-all duration-75",
+                          isLit ? (i >= 6 ? "bg-red-400" : i >= 4 ? "bg-yellow-400" : "bg-green-400") : "bg-stone-800"
+                        )}
+                        style={{ height: `${4 + i}px` }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Monitor toggle */}
+                <button
+                  onClick={() => setMonitorEnabled(!monitorEnabled)}
+                  className={cn(
+                    "shrink-0 p-1 rounded transition-colors",
+                    monitorEnabled ? "text-green-400 bg-green-400/10" : "text-stone-600 hover:text-stone-400"
+                  )}
+                  title={monitorEnabled ? (language === 'ru' ? 'Выключить звук гитары' : 'Mute monitor') : (language === 'ru' ? 'Слушать гитару' : 'Enable monitor')}
+                >
+                  {monitorEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                </button>
+
+                {/* Recent notes */}
+                {noteHistory.length > 0 && (
+                  <div className="hidden md:flex items-center gap-1 shrink-0 border-l border-stone-800 pl-2 ml-1">
+                    {noteHistory.slice(0, 6).map((h, i) => (
+                      <span
+                        key={`${h.note}-${h.timestamp}-${i}`}
+                        className="text-[10px] font-bold px-1 rounded bg-cyan-900/20 text-cyan-400 shrink-0"
+                        style={{ opacity: Math.max(0.3, 1 - h.age) }}
+                      >
+                        {h.name}{h.octave}
                       </span>
-                    </div>
-                    {!isSignalPresent && inputLevel < 0.01 && (
-                      <p className="text-[10px] text-stone-600 text-center max-w-sm">
-                        {language === 'ru'
-                          ? 'Если подключена звуковая карта — выберите её в выпадающем меню рядом с кнопкой «Подключить гитару».'
-                          : 'If using an audio interface — select it from the dropdown next to "Connect Guitar".'}
-                      </p>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
-
-              {/* Note history trail */}
-              {noteHistory.length > 0 && (
-                <div className="border-t border-stone-800/50 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto">
-                  <span className="text-[9px] text-stone-600 font-bold uppercase tracking-wider shrink-0">
-                    {language === 'ru' ? 'Последние:' : 'Recent:'}
-                  </span>
-                  {noteHistory.map((h, i) => (
-                    <span
-                      key={`${h.note}-${h.timestamp}-${i}`}
-                      className="text-xs font-bold px-1.5 py-0.5 rounded bg-cyan-900/30 text-cyan-300 shrink-0 transition-opacity"
-                      style={{ opacity: Math.max(0.2, 1 - h.age) }}
-                    >
-                      {h.name}{h.octave}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
+          )}
+
+          {/* Guitar Tuner Mode */}
+          {viewMode === 'tuner' && (
+            <GuitarTuner
+              tuningName={selectedTuningName}
+              tuningNotes={GUITAR_TUNINGS[selectedTuningName as keyof typeof GUITAR_TUNINGS] || GUITAR_TUNINGS.Standard}
+              detectedNote={detectedNote}
+              isListening={isListening}
+              isSignalPresent={isSignalPresent}
+              inputLevel={inputLevel}
+              language={language}
+              instrumentType={selectedInstrument}
+              monitorEnabled={monitorEnabled}
+              onMonitorToggle={() => setMonitorEnabled(!monitorEnabled)}
+            />
           )}
 
           {/* Info Display and Playback Controls */}
