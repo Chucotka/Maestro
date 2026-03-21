@@ -9,7 +9,7 @@ const PaywallDialog: React.FC = () => {
   const { showPaywall, setShowPaywall, setPlan, plan } = useSubscription();
   const { language } = useI18n();
   const isRu = language === 'ru';
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'lifetime'>('yearly');
 
   if (!showPaywall) return null;
 
@@ -46,30 +46,44 @@ const PaywallDialog: React.FC = () => {
         </p>
 
         {/* Billing toggle */}
-        <div className="flex items-center justify-center gap-2 mb-5 px-4">
+        <div className="flex items-center justify-center gap-1.5 mb-5 px-4 flex-wrap">
           <button
             onClick={() => setBillingCycle('monthly')}
             className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+              "px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all",
               billingCycle === 'monthly'
                 ? "bg-[#b06a3b] text-white"
                 : "bg-stone-800 text-gray-400 hover:text-white"
             )}
           >
-            {isRu ? 'Ежемесячно' : 'Monthly'}
+            {isRu ? 'Месяц' : 'Monthly'}
           </button>
           <button
             onClick={() => setBillingCycle('yearly')}
             className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5",
+              "px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all flex items-center gap-1",
               billingCycle === 'yearly'
                 ? "bg-[#b06a3b] text-white"
                 : "bg-stone-800 text-gray-400 hover:text-white"
             )}
           >
-            {isRu ? 'Годовой' : 'Yearly'}
-            <span className="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded-full font-bold">
-              {isRu ? '-37%' : '-37%'}
+            {isRu ? 'Год' : 'Yearly'}
+            <span className="text-[9px] sm:text-[10px] bg-green-600 text-white px-1 sm:px-1.5 py-0.5 rounded-full font-bold">
+              -37%
+            </span>
+          </button>
+          <button
+            onClick={() => setBillingCycle('lifetime')}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all flex items-center gap-1",
+              billingCycle === 'lifetime'
+                ? "bg-[#b06a3b] text-white"
+                : "bg-stone-800 text-gray-400 hover:text-white"
+            )}
+          >
+            {isRu ? 'Навсегда' : 'Lifetime'}
+            <span className="text-[9px] sm:text-[10px] bg-purple-600 text-white px-1 sm:px-1.5 py-0.5 rounded-full font-bold">
+              {isRu ? 'ТОП' : 'BEST'}
             </span>
           </button>
         </div>
@@ -77,9 +91,11 @@ const PaywallDialog: React.FC = () => {
         {/* Plans grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 px-4 sm:px-6 pb-5">
           {PLANS.map((p) => {
-            const price = billingCycle === 'yearly'
-              ? (isRu ? p.priceYearlyPerMonthRu : p.priceYearlyPerMonth)
-              : (isRu ? p.priceMonthlyRu : p.priceMonthly);
+            const price = billingCycle === 'lifetime'
+              ? (isRu ? (p.priceLifetimeRu || p.priceMonthlyRu) : (p.priceLifetime || p.priceMonthly))
+              : billingCycle === 'yearly'
+                ? (isRu ? p.priceYearlyPerMonthRu : p.priceYearlyPerMonth)
+                : (isRu ? p.priceMonthlyRu : p.priceMonthly);
             const totalYearly = isRu ? p.priceYearlyRu : p.priceYearly;
             const savingsText = billingCycle === 'yearly' && p.savings
               ? (isRu ? p.savingsRu : p.savings)
@@ -110,7 +126,7 @@ const PaywallDialog: React.FC = () => {
                 <div className="mb-3">
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-bold text-[#b06a3b]">{price}</span>
-                    {p.id !== 'free' && (
+                    {p.id !== 'free' && billingCycle !== 'lifetime' && (
                       <span className="text-xs text-gray-500">
                         /{isRu ? 'мес' : 'mo'}
                       </span>
@@ -122,6 +138,11 @@ const PaywallDialog: React.FC = () => {
                       {savingsText && (
                         <span className="ml-1.5 text-green-400 font-semibold">{savingsText}</span>
                       )}
+                    </div>
+                  )}
+                  {p.id !== 'free' && billingCycle === 'lifetime' && (
+                    <div className="text-[11px] text-gray-500 mt-0.5">
+                      {isRu ? 'единоразово' : 'one-time payment'}
                     </div>
                   )}
                   {p.id === 'free' && (
@@ -155,7 +176,9 @@ const PaywallDialog: React.FC = () => {
                     ? (isRu ? 'Текущий план' : 'Current Plan')
                     : p.id === 'free'
                       ? (isRu ? 'Продолжить бесплатно' : 'Continue Free')
-                      : (isRu ? 'Начать бесплатный период' : 'Start Free Trial')}
+                      : billingCycle === 'lifetime'
+                        ? (isRu ? 'Купить навсегда' : 'Buy Lifetime')
+                        : (isRu ? 'Начать бесплатный период' : 'Start Free Trial')}
                 </Button>
               </div>
             );

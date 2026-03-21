@@ -12,6 +12,8 @@ export interface SubscriptionPlan {
   priceYearlyRu: string;
   priceYearlyPerMonth: string;
   priceYearlyPerMonthRu: string;
+  priceLifetime?: string;
+  priceLifetimeRu?: string;
   features: string[];
   featuresRu: string[];
   popular?: boolean;
@@ -56,6 +58,8 @@ export const PLANS: SubscriptionPlan[] = [
     priceYearlyPerMonth: '$2.49',
     priceYearlyPerMonthRu: '207 ₽',
     popular: true,
+    priceLifetime: '$49.99',
+    priceLifetimeRu: '3 990 ₽',
     savings: 'Save 37%',
     savingsRu: 'Экономия 37%',
     features: [
@@ -87,6 +91,8 @@ export const PLANS: SubscriptionPlan[] = [
     priceYearlyRu: '3 990 ₽',
     priceYearlyPerMonth: '$4.16',
     priceYearlyPerMonthRu: '332 ₽',
+    priceLifetime: '$79.99',
+    priceLifetimeRu: '6 490 ₽',
     savings: 'Save 40%',
     savingsRu: 'Экономия 40%',
     features: [
