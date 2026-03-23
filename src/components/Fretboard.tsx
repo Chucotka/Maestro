@@ -146,32 +146,29 @@ const Fretboard: React.FC<FretboardProps> = ({
     });
 
     // --- Map each detected note to ONE specific (string, fret) position ---
-    // Strategy: prefer the lowest-pitched (thickest) string that can play the note
-    // within a reasonable fret range. This matches how guitarists actually play:
-    // staying on one string across frets rather than jumping to an open string.
+    // Strategy:
+    // 1. If the note matches an open string exactly (fret 0), use that string
+    // 2. Otherwise, prefer the string with the lowest fret number
+    // This correctly shows open strings and places fretted notes naturally.
     const findBestString = (midiNote: number, usedStrings: Set<number>): { si: number; fret: number } | null => {
-      // displayTuning is reversed: index 0 = highest string, last = lowest string
-      // Iterate from lowest (thickest) string to highest
-      let bestSi = -1;
-      let bestFret = -1;
-
+      // First pass: check for open string match (fret 0) — highest priority
       for (let si = openMidis.length - 1; si >= 0; si--) {
         if (usedStrings.has(si)) continue;
-        const f = midiNote - openMidis[si];
-        if (f < 0 || f > numFrets) continue;
-
-        // Pick this string if:
-        // 1. It's the first valid string found (from low to high), OR
-        // 2. The fret is within comfortable range (0-12)
-        if (f <= 12) {
-          bestSi = si;
-          bestFret = f;
-          break; // Take the lowest string that works within 12 frets
+        if (midiNote === openMidis[si]) {
+          return { si, fret: 0 };
         }
-        // If only high-fret options exist, keep as fallback
-        if (bestSi < 0) {
-          bestSi = si;
+      }
+
+      // Second pass: find the string with the lowest fret (most natural position)
+      let bestSi = -1;
+      let bestFret = Infinity;
+      for (let si = 0; si < openMidis.length; si++) {
+        if (usedStrings.has(si)) continue;
+        const f = midiNote - openMidis[si];
+        if (f <= 0 || f > numFrets) continue; // f=0 handled above
+        if (f < bestFret) {
           bestFret = f;
+          bestSi = si;
         }
       }
 
