@@ -1,14 +1,21 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "fretmaestro",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Professional guitar trainer — chords, scales, CAGED, arpeggios & music theory",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap open ios",
+    "cap:android": "npx cap open android",
+    "build:ios": "vite build && npx cap sync ios",
+    "build:android": "vite build && npx cap sync android",
+    "build:all": "vite build && npx cap sync"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
@@ -67,7 +74,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@dyad-sh/react-vite-component-tagger": "^0.8.0",
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",

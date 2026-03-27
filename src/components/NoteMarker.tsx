@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface NoteMarkerProps {
@@ -7,6 +7,7 @@ interface NoteMarkerProps {
   isHighlighted: boolean;
   size: number;
   onClick?: () => void;
+  className?: string;
 }
 
 const NoteMarker: React.FC<NoteMarkerProps> = ({
@@ -15,27 +16,41 @@ const NoteMarker: React.FC<NoteMarkerProps> = ({
   isHighlighted,
   size,
   onClick,
+  className,
 }) => {
+  const [isActive, setIsActive] = useState(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsActive(true);
+    setTimeout(() => setIsActive(false), 200);
+    if (onClick) onClick();
+  };
+
   return (
     <div
       className={cn(
         "flex items-center justify-center rounded-full font-bold cursor-pointer transition-all duration-150 ease-in-out border-2",
         {
+          // Active state
+          'scale-125 z-50 shadow-[0_0_15px_rgba(255,255,255,0.8)]': isActive,
+
           // Highlighted States
-          'shadow-lg': isRoot && isHighlighted,
-          'shadow-md': !isRoot && isHighlighted,
-          
-          // Root Note
-          'border-red-500 text-red-600 bg-red-100/80 dark:border-red-400 dark:text-red-400 dark:bg-red-900/70 dark:shadow-red-500/30': isRoot && isHighlighted,
-          
-          // Other Scale Notes
-          'border-sky-500 text-sky-600 bg-sky-100/80 dark:border-sky-400 dark:text-sky-400 dark:bg-sky-900/70 dark:shadow-sky-500/30': !isRoot && isHighlighted,
-          
+          'shadow-lg': isRoot && isHighlighted && !isActive,
+          'shadow-md': !isRoot && isHighlighted && !isActive,
+
+          // Root Note (Orange/Brown in the reference image)
+          'border-[#b06a3b] text-[#b06a3b] bg-[#1a1a1a] shadow-[0_0_8px_rgba(176,106,59,0.5)] border-4': isRoot && isHighlighted,
+
+          // Other Scale Notes (Cream/Light in the reference image)
+          'border-[#e5d5c0] text-[#e5d5c0] bg-[#1a1a1a]': !isRoot && isHighlighted,
+
           // Non-Scale Notes (when showAllNotes is true)
-          'border-stone-400 text-stone-600 bg-stone-50/80 dark:border-slate-600 dark:text-slate-300 dark:bg-slate-800/70': !isHighlighted,
-        }
+          'border-stone-600 text-stone-500 bg-transparent': !isHighlighted,
+        },
+        className
       )}
-      onClick={onClick}
+      onClick={handleClick}
       style={{
         width: `${size}px`,
         height: `${size}px`,
