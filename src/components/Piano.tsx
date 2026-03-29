@@ -1,14 +1,22 @@
 import React, { useMemo, useState, useRef, useLayoutEffect } from 'react';
 import * as Tone from 'tone';
-import { getScaleNotes, SCALES } from '@/lib/fretboardUtils';
+import { getScaleNotes, getChordNotes, getIntervalName, ALL_NOTES, SCALES, CHORDS } from '@/lib/fretboardUtils';
 import { cn } from '@/lib/utils';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useI18n } from '@/lib/i18n';
+import { DetectedNote } from '@/hooks/useAudioInput';
 
 interface PianoProps {
   selectedRoot: string;
   selectedScaleName: keyof typeof SCALES;
-  synth: React.MutableRefObject<Tone.Synth | null>;
+  selectedChordName?: keyof typeof CHORDS;
+  mode: 'scale' | 'chord';
+  sampler: Tone.Sampler | null;
+  onModeChange?: (mode: 'scale' | 'chord') => void;
+  detectedNote?: DetectedNote | null;
 }
 
 interface PianoKey {
@@ -35,83 +43,137 @@ const ALL_PIANO_KEYS: PianoKey[] = (() => {
 const whiteKeys = ALL_PIANO_KEYS.filter(k => !k.isBlack);
 const blackKeys = ALL_PIANO_KEYS.filter(k => k.isBlack);
 
-const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth }) => {
+const Piano: React.FC<PianoProps> = ({
+  selectedRoot,
+  selectedScaleName,
+  selectedChordName,
+  mode,
+  sampler,
+  onModeChange,
+  detectedNote
+}) => {
+  const { t } = useI18n();
   const [showNoteNames, setShowNoteNames] = useState(false);
+  const [showDegrees, setShowDegrees] = useState(true);
+  const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
   const [keyDimensions, setKeyDimensions] = useState({ whiteKeyWidth: 20, blackKeyWidth: 12 });
   const pianoContainerRef = useRef<HTMLDivElement>(null);
 
-  const scaleNotes = useMemo(() => getScaleNotes(selectedRoot, SCALES[selectedScaleName]), [selectedRoot, selectedScaleName]);
+  const activeNotesList = useMemo(() => {
+    if (mode === 'virtual') return [];
+    if (mode === 'chord' && selectedChordName) {
+      return getChordNotes(selectedRoot, CHORDS[selectedChordName]);
+    }
+    return getScaleNotes(selectedRoot, SCALES[selectedScaleName]);
+  }, [selectedRoot, selectedScaleName, selectedChordName, mode]);
 
   useLayoutEffect(() => {
     const container = pianoContainerRef.current;
     if (!container) return;
 
-    const observer = new ResizeObserver(entries => {
-      if (entries[0]) {
-        const containerWidth = entries[0].contentRect.width;
-        if (containerWidth > 0) {
-          const whiteKeyWidth = containerWidth / whiteKeys.length;
-          setKeyDimensions({ whiteKeyWidth, blackKeyWidth: whiteKeyWidth * 0.6 });
-        }
+    const updateDimensions = () => {
+      const containerWidth = container.offsetWidth;
+      if (containerWidth > 0) {
+        const whiteKeyWidth = containerWidth / whiteKeys.length;
+        setKeyDimensions({ whiteKeyWidth, blackKeyWidth: whiteKeyWidth * 0.6 });
       }
-    });
+    };
 
+    updateDimensions();
+    const observer = new ResizeObserver(updateDimensions);
     observer.observe(container);
     return () => observer.disconnect();
   }, []);
 
   const handleNoteClick = (noteWithOctave: string) => {
-    if (synth.current && Tone.context.state === 'running') {
-      synth.current.triggerAttackRelease(noteWithOctave, "8n");
+    if (sampler && Tone.context.state === 'running') {
+      setActiveNotes(prev => new Set(prev).add(noteWithOctave));
+      setTimeout(() => {
+        setActiveNotes(prev => {
+          const next = new Set(prev);
+          next.delete(noteWithOctave);
+          return next;
+        });
+      }, 200);
+      sampler.triggerAttackRelease(noteWithOctave, "2n");
     }
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-white dark:bg-slate-800/50 rounded-lg shadow-xl backdrop-blur-sm w-full transition-colors duration-300">
-      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-8 justify-center items-center">
-        <div className="flex items-center space-x-2">
-          <Switch id="show-note-names-piano" checked={showNoteNames} onCheckedChange={setShowNoteNames} />
-          <Label htmlFor="show-note-names-piano" className="text-gray-700 dark:text-gray-300">Show Note Names</Label>
-        </div>
-      </div>
-
-      <div className="w-full h-40 md:h-56 border-2 border-slate-300 dark:border-slate-700 rounded-lg bg-slate-200 dark:bg-slate-900 p-1">
+    <div className="p-1 md:p-2 bg-[#1a1a1a] w-full transition-colors duration-300">
+      <ScrollArea className="w-full whitespace-nowrap border-none">
+        <div className="min-w-[800px] h-48 md:h-64 landscape:h-40 p-2 bg-[#121212]">
         <div ref={pianoContainerRef} className="relative w-full h-full">
           {keyDimensions.whiteKeyWidth > 0 && (
-            <>
-              <div className="flex w-full h-full">
+            <div className="relative w-full h-full">
+              <div className="flex w-full h-full absolute top-0 left-0">
                 {whiteKeys.map(key => {
-                  const isHighlighted = scaleNotes.includes(key.note);
+                  const isHighlighted = activeNotesList.includes(key.note);
                   const isRoot = isHighlighted && key.note === selectedRoot;
+                  const isHeard = detectedNote ? detectedNote.name === key.note : false;
+
+                  let label = '';
+                  if (showNoteNames) label = key.note;
+                  else if (showDegrees && isHighlighted) {
+                    const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
+                    const rootIndex = ALL_NOTES.indexOf(selectedRoot);
+                    const matchingInterval = intervals.find(i => (rootIndex + i) % 12 === ALL_NOTES.indexOf(key.note));
+                    const semitones = matchingInterval !== undefined ? matchingInterval : (ALL_NOTES.indexOf(key.note) - rootIndex + 12) % 12;
+                    label = getIntervalName(semitones);
+                  }
+
                   return (
                     <button
                       key={key.noteWithOctave}
                       onClick={() => handleNoteClick(key.noteWithOctave)}
                       className={cn(
                         'flex-shrink-0 flex items-end justify-center p-1 pb-2 border-slate-400 border-l border-b rounded-b-sm transition-all duration-100 bg-white hover:bg-slate-100',
-                        isHighlighted && { 'border-2': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-100 dark:bg-red-900/50': isRoot, 'bg-sky-100 dark:bg-sky-900/50': !isRoot }
+                        activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b]/50 scale-y-[0.98] z-20',
+                        isHeard && !activeNotes.has(key.noteWithOctave) && 'ring-2 ring-yellow-400 z-10 shadow-[0_0_10px_rgba(250,204,21,0.5)]',
+                        isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#b06a3b]/20': isRoot, 'bg-[#e5d5c0]/20': !isRoot }
                       )}
-                      style={{ width: `${keyDimensions.whiteKeyWidth}px` }}
+                      style={{ width: `${keyDimensions.whiteKeyWidth}px`, backgroundColor: '#e5d5c0' }}
                     >
-                      <span className={cn('font-bold select-none text-black', { 'text-xs': keyDimensions.whiteKeyWidth < 28 }, isHighlighted && { 'text-red-600 dark:text-red-400': isRoot, 'text-sky-600 dark:text-sky-400': !isRoot })}>
-                        {showNoteNames ? key.note : ''}
+                      <span className={cn('font-bold select-none text-black', { 'text-xs': keyDimensions.whiteKeyWidth < 28 }, isHighlighted && { 'text-[#b06a3b]': isRoot, 'text-stone-800': !isRoot })}>
+                        {label}
                       </span>
                     </button>
                   );
                 })}
               </div>
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
               {blackKeys.map(key => {
-                const isHighlighted = scaleNotes.includes(key.note);
+                const isHighlighted = activeNotesList.includes(key.note);
                 const isRoot = isHighlighted && key.note === selectedRoot;
-                const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.octave > key.octave || (wk.octave === key.octave && wk.note > key.note)) -1;
+                const isHeard = detectedNote ? detectedNote.name === key.note : false;
+
+                const precedingWhiteNote = key.note === 'C#' ? 'C' :
+                                           key.note === 'D#' ? 'D' :
+                                           key.note === 'F#' ? 'F' :
+                                           key.note === 'G#' ? 'G' :
+                                           key.note === 'A#' ? 'A' : '';
+
+                const precedingWhiteKeyIndex = whiteKeys.findIndex(wk => wk.note === precedingWhiteNote && wk.octave === key.octave);
+
+                let label = '';
+                if (showNoteNames) label = key.note;
+                else if (showDegrees && isHighlighted) {
+                  const intervals = mode === 'chord' && selectedChordName ? CHORDS[selectedChordName] : SCALES[selectedScaleName];
+                  const rootIndex = ALL_NOTES.indexOf(selectedRoot);
+                  const matchingInterval = intervals.find(i => (rootIndex + i) % 12 === ALL_NOTES.indexOf(key.note));
+                  const semitones = matchingInterval !== undefined ? matchingInterval : (ALL_NOTES.indexOf(key.note) - rootIndex + 12) % 12;
+                  label = getIntervalName(semitones);
+                }
 
                 return (
                   <button
                     key={key.noteWithOctave}
                     onClick={() => handleNoteClick(key.noteWithOctave)}
                     className={cn(
-                      'absolute flex items-start justify-center pt-1 border-slate-400 rounded-b-sm transition-all duration-100 z-10 bg-slate-800 hover:bg-slate-700 border-2',
-                      isHighlighted && { 'border-4': true, 'border-red-500 dark:border-red-400': isRoot, 'border-sky-500 dark:border-sky-400': !isRoot, 'bg-red-800': isRoot, 'bg-sky-800': !isRoot }
+                      'absolute flex items-start justify-center pt-1 border-stone-800 rounded-b-sm transition-all duration-100 z-10 bg-stone-900 hover:bg-stone-800 border pointer-events-auto',
+                      activeNotes.has(key.noteWithOctave) && 'bg-[#b06a3b] scale-y-[0.95] z-30',
+                      isHeard && !activeNotes.has(key.noteWithOctave) && 'ring-2 ring-yellow-400 z-20 shadow-[0_0_10px_rgba(250,204,21,0.5)]',
+                      isHighlighted && !activeNotes.has(key.noteWithOctave) && { 'border-2': true, 'border-[#b06a3b]': isRoot, 'border-[#e5d5c0]': !isRoot, 'bg-[#4a2e1c]': isRoot, 'bg-[#2a2a2a]': !isRoot }
                     )}
                     style={{
                       width: `${keyDimensions.blackKeyWidth}px`,
@@ -121,20 +183,19 @@ const Piano: React.FC<PianoProps> = ({ selectedRoot, selectedScaleName, synth })
                     }}
                   >
                     <span className={cn('font-bold select-none text-white', { 'text-xs': keyDimensions.blackKeyWidth < 20 }, isHighlighted && { 'text-red-400': isRoot, 'text-sky-400': !isRoot })}>
-                      {showNoteNames ? key.note : ''}
+                      {label}
                     </span>
                   </button>
                 );
               })}
-            </>
+              </div>
+            </div>
           )}
         </div>
-      </div>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
-      <div className="mt-8 text-center">
-        <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Current Scale Notes:</h3>
-        <p className="text-lg text-gray-700 dark:text-gray-300">{scaleNotes.join(", ")}</p>
-      </div>
     </div>
   );
 };

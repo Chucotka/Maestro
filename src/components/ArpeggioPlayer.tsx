@@ -1,0 +1,196 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import * as Tone from 'tone';
+import { Button } from '@/components/ui/button';
+import { Play, Pause, Square, FastForward, Rewind } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { toast } from "sonner";
+import { useI18n } from '@/lib/i18n';
+import { ALL_NOTES } from '@/lib/fretboardUtils';
+import { cn } from '@/lib/utils';
+
+interface ArpeggioNote {
+  noteName: string;
+  string?: number;
+  fret?: number;
+  noteWithOctave?: string;
+}
+
+interface ArpeggioPlayerProps {
+  notes: string[] | ArpeggioNote[]; // Note names or objects with positions
+  sampler: Tone.Sampler | null;
+  instrumentType?: string;
+  onNotePlay?: (note: ArpeggioNote | null) => void;
+}
+
+const ArpeggioPlayer: React.FC<ArpeggioPlayerProps> = ({ notes, sampler, instrumentType, onNotePlay }) => {
+  const { t } = useI18n();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [tempo, setTempo] = useState(120);
+  const [direction, setDirection] = useState<'up' | 'down' | 'updown'>('up');
+  const sequenceRef = useRef<Tone.Sequence | null>(null);
+
+  const stopArpeggio = useCallback(() => {
+    if (onNotePlay) onNotePlay(null);
+    setIsPlaying(false);
+    if (sequenceRef.current) {
+      sequenceRef.current.stop();
+      sequenceRef.current.dispose();
+      sequenceRef.current = null;
+    }
+    // We don't stop the whole Transport here to avoid killing the metronome
+  }, []);
+
+  const createSequence = useCallback(() => {
+    if (!sampler || notes.length === 0) return null;
+    if (!sampler.loaded) return null;
+
+    // Normalize notes to objects
+    const noteObjects: ArpeggioNote[] = notes.map(n => typeof n === 'string' ? { noteName: n } : n);
+
+    // Create actual notes with octaves for playback, ensuring they go up
+    let currentOctave = instrumentType === 'bass' ? 1 : instrumentType === 'ukulele' ? 4 : 3;
+    let lastNoteIndex = -1;
+
+    const sequenceData = noteObjects.map((obj) => {
+      const n = obj.noteName;
+      const noteIndex = ALL_NOTES.indexOf(n);
+
+      let noteWithOctave = obj.noteWithOctave;
+      if (!noteWithOctave) {
+        if (noteIndex !== -1 && noteIndex < lastNoteIndex) {
+          currentOctave++;
+        }
+        lastNoteIndex = noteIndex;
+        noteWithOctave = `${n}${currentOctave}`;
+      }
+
+      return { ...obj, noteWithOctave };
+    });
+
+    let notesToPlay = [...sequenceData];
+    if (direction === 'down') notesToPlay.reverse();
+    if (direction === 'updown') notesToPlay = [...sequenceData, ...[...sequenceData].reverse().slice(1, -1)];
+
+    return new Tone.Sequence((time, obj) => {
+      sampler.triggerAttackRelease(obj.noteWithOctave!, "8n", time);
+      if (onNotePlay) {
+        Tone.Draw.schedule(() => {
+          onNotePlay(obj);
+        }, time);
+      }
+    }, notesToPlay, "8n");
+  }, [sampler, notes, direction, instrumentType, onNotePlay]);
+
+  const startArpeggio = useCallback(async () => {
+    if (!sampler) return;
+
+    // Resume audio context
+    if (Tone.getContext().state !== 'running') {
+      await Tone.start();
+    }
+
+    if (sequenceRef.current) {
+      sequenceRef.current.dispose();
+    }
+
+    const seq = createSequence();
+    if (seq) {
+      sequenceRef.current = seq;
+      sequenceRef.current.start(0);
+
+      Tone.Transport.bpm.value = tempo;
+      if (Tone.Transport.state !== 'started') {
+        Tone.Transport.start();
+      }
+      setIsPlaying(true);
+    } else {
+      toast.error("Could not start arpeggio. Check if audio is loaded.");
+    }
+  }, [sampler, tempo, createSequence]);
+
+  // Handle prop changes while playing
+  useEffect(() => {
+    if (isPlaying && sequenceRef.current) {
+      const wasStarted = sequenceRef.current.state === 'started';
+      sequenceRef.current.stop();
+      sequenceRef.current.dispose();
+
+      const seq = createSequence();
+      if (seq) {
+        sequenceRef.current = seq;
+        if (wasStarted) sequenceRef.current.start(0);
+      }
+    }
+  }, [notes, direction, sampler, instrumentType, createSequence]); // isPlaying excluded to avoid loop
+
+  useEffect(() => {
+    Tone.Transport.bpm.value = tempo;
+  }, [tempo]);
+
+  useEffect(() => {
+    return () => {
+      stopArpeggio();
+    };
+  }, [stopArpeggio]);
+
+  return (
+    <div className="flex flex-col items-center gap-4 p-4 bg-[#1a1a1a] border border-stone-800 rounded-lg shadow-xl w-full">
+      <h3 className="text-lg font-bold text-[#b06a3b] self-start">{t('arpeggio')}</h3>
+      <div className="flex items-center gap-6 w-full">
+        <Button
+          variant={isPlaying ? "destructive" : "default"}
+          size="icon"
+          onClick={isPlaying ? stopArpeggio : startArpeggio}
+          disabled={!sampler}
+          className={cn("shrink-0", !isPlaying && "bg-[#b06a3b] hover:bg-[#8e5630]")}
+        >
+          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </Button>
+        {!sampler && <span className="text-[10px] text-stone-500 animate-pulse">{t('loading')}</span>}
+
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex justify-between text-xs text-gray-400">
+            <span>{t('tempo')}</span>
+            <span>{tempo} {t('bpm')}</span>
+          </div>
+          <Slider
+            value={[tempo]}
+            min={40}
+            max={240}
+            onValueChange={v => setTempo(v[0])}
+            className="[&_[role=slider]]:bg-[#b06a3b]"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant={direction === 'up' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDirection('up')}
+            className={cn(direction === 'up' ? "bg-stone-700 text-white" : "text-gray-400 border-stone-800")}
+          >
+            {t('up')}
+          </Button>
+          <Button
+            variant={direction === 'down' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDirection('down')}
+            className={cn(direction === 'down' ? "bg-stone-700 text-white" : "text-gray-400 border-stone-800")}
+          >
+            {t('down')}
+          </Button>
+          <Button
+            variant={direction === 'updown' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDirection('updown')}
+            className={cn(direction === 'updown' ? "bg-stone-700 text-white" : "text-gray-400 border-stone-800")}
+          >
+            ↕
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ArpeggioPlayer;
